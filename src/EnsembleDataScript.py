@@ -31,7 +31,7 @@ input_columns = {
 }
 
 # Generate LHS samples
-samples = lhs_repair(n_samples=5, seed=0)
+samples = lhs_repair(n_samples=150, seed=0)
 
 # Build DataFrame and save to CSV
 df = pd.DataFrame(samples, columns=list(input_columns.keys()))

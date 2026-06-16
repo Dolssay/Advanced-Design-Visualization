@@ -12,20 +12,20 @@ from scipy.stats import qmc
 # 1.  Define the 14 parameters
 #     Each entry: (name, low, high)
 
-PARAMS = [('payload_kg', 200, 300), 
-          ('wingspan_m', 8, 16), 
-          ('d_value_m', 9, 16),
-          ('fuselage_l_m', 6, 9), 
-          ('fuselage_w_m', 0.7, 1.5),
-          ('horiz_tail_vol_coeff', 0.3, 0.6), 
-          ('vert_tail_vol_coeff', 0.01, 0.04),
-          ('cruise_s', 400, 1200), 
-          ('reserve_cruise_s', 50, 250),
-          ('batt_spec_energy_w_h_p_kg', 200, 280),
-          # ('rotor_count', 2, 6), derived from lift + tilt, not sampled directly
-          ('lift_rotor_count', 2, 4), 
-          ('tilt_rotor_count', 1, 2),
-          ('rotor_diameter_m', 2.5, 4.0)]
+PARAMS = [('payload_kg', 400, 500), 
+          ('wingspan_m', 8, 17), 
+          ('d_value_m', 9, 17),
+          ('fuselage_l_m', 8, 10), 
+          ('fuselage_w_m', 1.4, 1.8),
+          ('horiz_tail_vol_coeff', 0.6, 0.8), 
+          ('vert_tail_vol_coeff', 0.04, 0.06),
+          ('cruise_s', 1700, 2100), 
+          ('reserve_cruise_s', 100, 125),
+          ('batt_spec_energy_w_h_p_kg', 230, 285),
+          # ('rotor_count', 10, 14), derived from lift + tilt, not sampled directly
+          ('lift_rotor_count', 5, 7), 
+          ('tilt_rotor_count', 5, 7),
+          ('rotor_diameter_m', 1.8, 2.3)]
 
 N_PARAMS = len(PARAMS)
 NAMES    = [p[0] for p in PARAMS]
@@ -39,7 +39,8 @@ IDX   = {name: i for i, name in enumerate(NAMES)}
 # 2. fuselage_l_m >= fuselage_w_m
 # 3. fuselage_l_m <= d_value_m
 # 4. lift_rotor_count + tilt_rotor_count = rotor_count
-# 5. rotor_count * rotor_diameter_m <= wingspan_m
+# 5. lift_rotor_count = tilt_rotor_count
+# 6. rotor_diameter_m * lift_rotor_count + (lift_rotor_count - 2) * 0.1 <= wingspan_m
 
 # generate LHS samples
 def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
@@ -65,31 +66,28 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
         bad = s[:, ci] > s[:, cj]
         s[bad, ci], s[bad, cj] = s[bad, cj].copy(), s[bad, ci].copy()
  
-    # Derive integer rotor counts (C4: lift + tilt == rotor_count)
+    # Derive integer rotor counts (C4: lift + tilt == rotor_count, C5: lift == tilt)
     cl = IDX['lift_rotor_count']
     ct = IDX['tilt_rotor_count']
  
-    lift = np.clip(np.round(s[:, cl]), LOWS[IDX['lift_rotor_count']], HIGHS[IDX['lift_rotor_count']]).astype(int)
-    tilt = np.clip(np.round(s[:, ct]), LOWS[IDX['tilt_rotor_count']], HIGHS[IDX['tilt_rotor_count']]).astype(int)
- 
-    # rotor_count is derived: sum of lift and tilt, clamped to [4, 10]
-    rotor = np.clip(lift + tilt, 4, 10)
- 
-    # Adjust tilt so lift + tilt == rotor exactly
-    tilt = rotor - lift
-    tilt = np.clip(tilt, int(LOWS[IDX['tilt_rotor_count']]), int(HIGHS[IDX['tilt_rotor_count']]))
+    # Since C5 enforces lift == tilt, use average of sampled values
+    avg_rotor_type = (s[:, cl] + s[:, ct]) / 2.0
+    rotor_type = np.clip(np.round(avg_rotor_type), LOWS[IDX['lift_rotor_count']], HIGHS[IDX['lift_rotor_count']]).astype(int)
     
-    # Recalculate lift to match rotor exactly
-    lift = rotor - tilt
-    lift = np.clip(lift, int(LOWS[IDX['lift_rotor_count']]), int(HIGHS[IDX['lift_rotor_count']]))
-    rotor = lift + tilt
- 
+    # Apply constraint 5: lift == tilt
+    lift = rotor_type.copy()
+    tilt = rotor_type.copy()
+    
+    # rotor_count is derived: 2 * rotor_type (since lift == tilt)
+    rotor = 2 * rotor_type
+    
     s[:, cl] = lift.astype(float)
     s[:, ct] = tilt.astype(float)
  
-    #  Clamp rotor_diameter_m (C5: rotor_count * diam <= wingspan_m) 
+    #  Clamp rotor_diameter_m (C6: rotor_diameter_m * lift_rotor_count + (lift_rotor_count - 2) * 0.1 <= wingspan_m)
+    # With C5 (lift == tilt), this becomes: rotor_diameter_m * rotor_type + (rotor_type - 2) * 0.1 <= wingspan_m
     wingspan = s[:, IDX['wingspan_m']]
-    max_diam = wingspan / rotor.astype(float)
+    max_diam = (wingspan - (rotor_type.astype(float) - 2) * 0.1) / rotor_type.astype(float)
     cd = IDX['rotor_diameter_m']
     
     # Enforce minimum disk loading constraint
@@ -98,10 +96,9 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
     # Rearranging: d >= sqrt(4*m*g / (pi*n*DL))
     # Using typical: m~2500kg (MTOW guess), g~9.81, DL_max~150 Pa
     # d_min ~ sqrt(4*2500*9.81 / (pi*6*150)) ~ 2.3 m
-    min_diam = 1.8  # Conservative minimum: 1.8m diameter
     
-    # Clamp diameter to [min_diam, max_diam] to balance disk loading
-    s[:, cd] = np.clip(s[:, cd], min_diam, max_diam)
+    # Clamp diameter to [LOWS[cd], max_diam] to balance disk loading
+    s[:, cd] = np.clip(s[:, cd], LOWS[cd], max_diam)
  
     #  Append rotor_count as a derived column (14th column)
     samples = np.column_stack([s, rotor.astype(float)])
@@ -121,6 +118,6 @@ if __name__ == "__main__":
     # Round numeric columns to 4 decimal places
     df = df.round(4)
 
-    out = "../output/lhs_uav_samples.csv"
+    out = "./output/lhs_uav_samples.csv"
     df.to_csv(out, index=False)
     print(f"Saved {N} samples → {out}")

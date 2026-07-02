@@ -13,7 +13,7 @@ from scipy.stats import qmc
 #     Each entry: (name, low, high)
 
 PARAMS = [('payload_kg', 400, 500), 
-          ('wingspan_m', 8, 17), 
+          ('wingspan_m', 12.2, 17), 
           ('d_value_m', 9, 17),
           ('fuselage_l_m', 8, 10), 
           ('fuselage_w_m', 1.4, 1.8),
@@ -41,6 +41,7 @@ IDX   = {name: i for i, name in enumerate(NAMES)}
 # 4. lift_rotor_count + tilt_rotor_count = rotor_count
 # 5. lift_rotor_count = tilt_rotor_count
 # 6. rotor_diameter_m * lift_rotor_count + (lift_rotor_count - 2) * 0.1 <= wingspan_m
+# 0.1m is the clearance for rotors
 
 # generate LHS samples
 def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
@@ -72,7 +73,17 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
  
     # Since C5 enforces lift == tilt, use average of sampled values
     avg_rotor_type = (s[:, cl] + s[:, ct]) / 2.0
-    rotor_type = np.clip(np.round(avg_rotor_type), LOWS[IDX['lift_rotor_count']], HIGHS[IDX['lift_rotor_count']]).astype(int)
+    rotor_type = np.clip(
+        np.round(avg_rotor_type),
+        LOWS[IDX['lift_rotor_count']],
+        HIGHS[IDX['lift_rotor_count']],
+    ).astype(int)
+
+    # Cap the rotor count so the 1.8 m diameter minimum remains feasible.
+    # For C6: wingspan >= rotor_type * d_min + (rotor_type - 2) * 0.1
+    cd = IDX['rotor_diameter_m']
+    max_feasible_rotor_type = np.floor((s[:, IDX['wingspan_m']] + 0.2) / 1.9).astype(int)
+    rotor_type = np.minimum(rotor_type, max_feasible_rotor_type)
     
     # Apply constraint 5: lift == tilt
     lift = rotor_type.copy()
@@ -88,7 +99,6 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
     # With C5 (lift == tilt), this becomes: rotor_diameter_m * rotor_type + (rotor_type - 2) * 0.1 <= wingspan_m
     wingspan = s[:, IDX['wingspan_m']]
     max_diam = (wingspan - (rotor_type.astype(float) - 2) * 0.1) / rotor_type.astype(float)
-    cd = IDX['rotor_diameter_m']
     
     # Enforce minimum disk loading constraint
     # For 250 kg aircraft with ~6 rotors: disk loading ~ 70-150 Pa is realistic
@@ -105,9 +115,9 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
     return samples
  
 if __name__ == "__main__":
-    N = 200
+    N = 150
  
-    samples = lhs_repair(n_samples=N, seed=42)
+    samples = lhs_repair(n_samples=N, seed=0)
  
     # Build DataFrame with derived rotor_count column
     COLS = NAMES + ['rotor_count']

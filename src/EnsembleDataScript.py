@@ -6,7 +6,12 @@ import matplotlib.pyplot as plt
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from evtol.aircraft import Aircraft
 from LHSeVTOL import lhs_repair
+from AirCraftSketch import visualize_aircraft_layout
 from MassBreakdownVisual import visualize_mass_breakdown
+from PowerProfileVisual import visualize_power_profile
+from EnergyProfileVisual import visualize_energy_profile
+from CruiseDragBuildupVisual import visualize_cruise_drag_buildup
+
 
 # create directory if it doesn't exist
 output_dir = "./output/ensemble_data"
@@ -31,7 +36,7 @@ input_columns = {
 }
 
 # Generate LHS samples
-samples = lhs_repair(n_samples=150, seed=0)
+samples = lhs_repair(n_samples=2, seed=0)
 
 # Build DataFrame and save to CSV
 df = pd.DataFrame(samples, columns=list(input_columns.keys()))
@@ -48,9 +53,10 @@ results = []
 
 # Loop through each sample (a run)
 for idx, row in df.iterrows():
+    idx = idx + 1 # Run index starts at 1
 
     # Build result dict for this run
-    result = {'cell': f'Run_{idx}'}
+    result = {'cell': f'run_{idx}'}
     # Input information
     result.update({col: row[col] for col in input_columns.keys()})
     
@@ -150,22 +156,44 @@ for idx, row in df.iterrows():
         result['Iterations'] = len(history)
         result['Status'] = 'Success'
 
-        # Mass breakdown visualization
-        fig, axes = visualize_mass_breakdown(structural, propulsion, subsystems, aircraft)
-        fig.savefig(f"{output_dir}/mass_breakdown_run_{idx}.png")
-        plt.close(fig)
-        result['Mass Breakdown Image'] = f"mass_breakdown_run_{idx}.png"
-
-        results.append(result)
-    except OverflowError as e:
-        print(f"⚠ Sample {idx}: OverflowError (infeasible design) - {e}")
-        results.append({'cell': f'Run_{idx}', 'MTOW (kg)': None, 'Status': 'OverflowError'})
+    # If MTOW does not converge
     except Exception as e:
         print(f"⚠ Sample {idx}: {type(e).__name__} - {e}")
-        results.append({'cell': f'Run_{idx}', 'MTOW (kg)': None, 'Status': type(e).__name__})
+        result['MTOW (kg)'] = None
+        result['Status'] = type(e).__name__
+        result['Iterations'] = None
     finally:
         if os.path.exists(temp_config_path):
             os.remove(temp_config_path)
+
+    # Aircraft layout visualization
+    fig, ax = visualize_aircraft_layout(aircraft)
+    fig.savefig(f"{output_dir}/{idx}_aircraft_layout.png", bbox_inches='tight', pad_inches=0.5)
+    plt.close(fig)
+    # Mass breakdown visualization
+    fig, axes = visualize_mass_breakdown(structural, propulsion, subsystems, aircraft)
+    fig.savefig(f"{output_dir}/{idx}_massbreakdown.png")
+    plt.close(fig)
+    # Power profile visualization
+    fig, ax = visualize_power_profile(aircraft)
+    fig.savefig(f"{output_dir}/{idx}_powerprofile.png")
+    plt.close(fig)
+    # Energy profile visualization
+    fig, ax = visualize_energy_profile(aircraft)
+    fig.savefig(f"{output_dir}/{idx}_energyprofile.png")
+    plt.close(fig)
+    # Cruise drag buildup visualization
+    fig, ax = visualize_cruise_drag_buildup(aircraft)
+    fig.savefig(f"{output_dir}/{idx}_cruisedragbuildup.png")
+    plt.close(fig)
+
+    result['image'] = f"{idx}.png"
+
+    # image types apply at 1st run
+    if idx == 1:
+        result['charts'] = 'Aircraft Layout;Mass Breakdown;Power Profile;Energy Profile;Cruise Drag Buildup'
+
+    results.append(result)
 
 # Save results
 pd.DataFrame(results).to_csv("./output/ensemble_data/GLEEdata.csv", index=False)

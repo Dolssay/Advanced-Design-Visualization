@@ -14,7 +14,7 @@ from CruiseDragBuildupVisual import visualize_cruise_drag_buildup
 
 
 # create directory if it doesn't exist
-output_dir = "./output/ensemble_data"
+output_dir = "./output/GLEEinput/ensemble_data"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -36,7 +36,7 @@ input_columns = {
 }
 
 # Generate LHS samples
-samples = lhs_repair(n_samples=2, seed=0)
+samples = lhs_repair(n_samples=200, seed=0)
 
 # Build DataFrame and save to CSV
 df = pd.DataFrame(samples, columns=list(input_columns.keys()))
@@ -196,4 +196,4 @@ for idx, row in df.iterrows():
     results.append(result)
 
 # Save results
-pd.DataFrame(results).to_csv("./output/ensemble_data/GLEEdata.csv", index=False)
+pd.DataFrame(results).to_csv("./output/GLEEinput/ensemble_data/GLEEdata.csv", index=False)

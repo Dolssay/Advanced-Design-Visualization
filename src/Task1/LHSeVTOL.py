@@ -128,6 +128,6 @@ if __name__ == "__main__":
     # Round numeric columns to 4 decimal places
     df = df.round(4)
 
-    out = "./output/lhs_uav_samples.csv"
+    out = "./output/GLEEinput/lhs_uav_samples.csv"
     df.to_csv(out, index=False)
     print(f"Saved {N} samples → {out}")

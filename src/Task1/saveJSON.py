@@ -6,7 +6,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # create directory if it doesn't exist
-output_dir = "./output/goodConfigurations"
+output_dir = "./output/GLEEinput/errorConfigurations"
 if not os.path.exists(output_dir):
     os.makedirs(output_dir)
 
@@ -35,13 +35,13 @@ with open('./Archer_Midnight.json', 'r') as f:
 results = []
 
 # Read both CSVs
-glee_df = pd.read_csv("./output/ensemble_data/GLEEdata.csv")
-lhs_df = pd.read_csv("./output/lhs_uav_samples.csv")
+glee_df = pd.read_csv("./output/GLEEinput/ensemble_data/GLEEdata.csv")
+lhs_df = pd.read_csv("./output/GLEEinput/lhs_uav_samples.csv")
 
 # Loop through GLEEdata and process ValueError entries
 for idx, row in glee_df.iterrows():
     # Check if status is ValueError
-    if pd.notna(row['Status']) and row['Status'] != 'ValueError':
+    if pd.notna(row['Status']) and row['Status'] == 'ValueError':
         # Extract run number from cell (e.g., "Run_0" -> 0)
         run_num = int(row['cell'].split('_')[1])
         

@@ -3,10 +3,10 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from evtol.aircraft import Aircraft
+from Task1.evtol.aircraft import Aircraft
 
 # Construct the absolute path to the JSON file
-json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'ehang.json'))
+json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Joby_s4.json'))
 ac = Aircraft(json_path)
 
 # MTOW Convergence 

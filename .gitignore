@@ -3,3 +3,5 @@ __pycache__/
 *.pyc
 # Artifact folder
 output/*
+# Data files
+data/*

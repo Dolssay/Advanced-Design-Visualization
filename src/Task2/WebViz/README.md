@@ -17,7 +17,7 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
    ```bash
    python src/Task2/filterGTB777.py
    ```
-   This writes `src/Task2/data/GTB777.csv`.
+   This writes `data/GTB777.csv` at the repository root.
 
 2. Start a local HTTP server from the repository root (`Task`):
    ```powershell
@@ -43,4 +43,4 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 ## Troubleshooting
 
 - If the browser shows a module import error, confirm the server is running and that you opened `http://localhost:8000/...` rather than a `file://` URL.
-- If `GTB777.csv` fails to load, verify the file exists at `src/Task2/data/GTB777.csv` relative to `src/Task2/WebViz/index.html`.
+- If `GTB777.csv` fails to load, verify the file exists at `data/GTB777.csv` in the repository root.

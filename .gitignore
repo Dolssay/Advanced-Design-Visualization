@@ -5,3 +5,7 @@ __pycache__/
 output/*
 # Data files
 data/*
+*.png
+*.csv
+# npm packages
+node_modules/

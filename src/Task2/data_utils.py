@@ -11,10 +11,29 @@ import pandas as pd
 from htp_config import CONSTRAINTS, constraint_columns_present
 
 
+def normalize_columns(columns):
+    normalized = []
+    for col in columns:
+        normalized_col = col
+
+        if col.startswith("Pred Formula Log[") and col.endswith("]"):
+            normalized_col = col[len("Pred Formula Log["):-1]
+        elif col.startswith("Predicted Log[") and col.endswith("]"):
+            normalized_col = col[len("Predicted Log["):-1]
+        elif col.startswith("Pred Formula "):
+            normalized_col = col[len("Pred Formula "):]
+        elif col.startswith("Predicted "):
+            normalized_col = col[len("Predicted "):]
+
+        normalized.append(normalized_col)
+    return normalized
+
+
 def load_doe(csv_path):
     """Load the raw DOE csv, drop fully-empty columns (e.g. unused 'Obj')."""
     df = pd.read_csv(csv_path)
     df = df.dropna(axis=1, how="all")
+    df.columns = normalize_columns(df.columns)
     return df
 
 

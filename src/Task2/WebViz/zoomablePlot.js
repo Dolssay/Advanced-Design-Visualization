@@ -22,8 +22,9 @@ export function zoomablePlot({
   let currentYDomain = yDomain;
   let currentTransform = d3.zoomIdentity;
   let currentQuadtree = null;
+  let currentRenderedPointsById = new Map();
   let renderQueued = false;
-  let pinnedPoint = null;
+  let pinnedPointId = null;
 
   const fill = colorDomain
     ? d3.scaleOrdinal().domain(colorDomain).range(colorRange)
@@ -46,19 +47,25 @@ export function zoomablePlot({
   canvas.style.display = "block";
   canvas.style.cursor = "crosshair";
 
-  const tooltip = document.createElement("div");
-  tooltip.style.position = "absolute";
-  tooltip.style.pointerEvents = "none";
-  tooltip.style.display = "none";
-  tooltip.style.background = "rgba(20, 20, 20, 0.92)";
-  tooltip.style.color = "#fff";
-  tooltip.style.padding = "6px 8px";
-  tooltip.style.borderRadius = "4px";
-  tooltip.style.fontSize = "12px";
-  tooltip.style.lineHeight = "1.35";
-  tooltip.style.whiteSpace = "pre-line";
-  tooltip.style.zIndex = "3";
-  tooltip.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.18)";
+  function createTooltip(backgroundColor) {
+    const node = document.createElement("div");
+    node.style.position = "absolute";
+    node.style.pointerEvents = "none";
+    node.style.display = "none";
+    node.style.background = backgroundColor;
+    node.style.color = "#fff";
+    node.style.padding = "6px 8px";
+    node.style.borderRadius = "4px";
+    node.style.fontSize = "12px";
+    node.style.lineHeight = "1.35";
+    node.style.whiteSpace = "pre-line";
+    node.style.zIndex = "3";
+    node.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.18)";
+    return node;
+  }
+
+  const pinnedTooltip = createTooltip("rgba(20, 20, 20, 0.95)");
+  const hoverTooltip = createTooltip("rgba(36, 36, 36, 0.92)");
 
   const canvasContext = canvas.getContext("2d");
   const plotLeft = marginLeft;
@@ -77,6 +84,7 @@ export function zoomablePlot({
   for (const group of groupedPoints) {
     for (const row of group.rows) {
       pointData.push({
+        id: `point-${pointData.length}`,
         color: group.color,
         label: row.Label ?? "",
         x: row[xKey],
@@ -158,6 +166,7 @@ export function zoomablePlot({
 
   function drawPoints(context, xScale, yScale) {
     const renderedPoints = [];
+    currentRenderedPointsById = new Map();
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.globalAlpha = 0.75;
@@ -172,7 +181,9 @@ export function zoomablePlot({
 
       context.fillStyle = point.color;
       context.fillRect(cx - 1.5, cy - 1.5, 4.5, 4.5);
-      renderedPoints.push({ ...point, cx, cy });
+      const renderedPoint = { ...point, cx, cy };
+      renderedPoints.push(renderedPoint);
+      currentRenderedPointsById.set(point.id, renderedPoint);
     }
 
     context.restore();
@@ -189,12 +200,13 @@ export function zoomablePlot({
     canvasContext.clearRect(0, 0, width, height);
     drawAxes(canvasContext, xScale, yScale);
     drawPoints(canvasContext, xScale, yScale);
-    if (pinnedPoint) {
-      showTooltip(
-        pinnedPoint,
-        xScale(pinnedPoint.x),
-        yScale(pinnedPoint.y)
-      );
+    if (pinnedPointId) {
+      const pinnedPoint = currentRenderedPointsById.get(pinnedPointId);
+      if (pinnedPoint) {
+        showTooltip(pinnedTooltip, pinnedPoint, xScale(pinnedPoint.x), yScale(pinnedPoint.y));
+      } else {
+        hideTooltip(pinnedTooltip);
+      }
     }
   }
 
@@ -206,79 +218,125 @@ export function zoomablePlot({
     requestAnimationFrame(render);
   }
 
-  function showTooltip(point, mouseX, mouseY) {
-    tooltip.textContent = point.title;
-    tooltip.style.display = "block";
-
-    const offset = 12;
-    const left = Math.min(mouseX + offset, width - 8);
-    const top = Math.min(mouseY + offset, height - 8);
-    tooltip.style.left = `${left}px`;
-    tooltip.style.top = `${top}px`;
+  function getTooltipBox(node) {
+    const left = Number.parseFloat(node.style.left) || 0;
+    const top = Number.parseFloat(node.style.top) || 0;
+    return {
+      left,
+      top,
+      right: left + node.offsetWidth,
+      bottom: top + node.offsetHeight
+    };
   }
 
-  function hideTooltip() {
-    tooltip.style.display = "none";
+  function boxesOverlap(a, b) {
+    return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+  }
+
+  function showTooltip(node, point, mouseX, mouseY, avoidNode = null) {
+    node.textContent = point.title;
+    node.style.display = "block";
+    node.style.visibility = "hidden";
+
+    const offset = 12;
+    const padding = 8;
+    const tooltipWidth = node.offsetWidth;
+    const tooltipHeight = node.offsetHeight;
+    const avoidBox = avoidNode && avoidNode.style.display !== "none" ? getTooltipBox(avoidNode) : null;
+    const candidates = [
+      { left: mouseX + offset, top: mouseY + offset },
+      { left: mouseX - tooltipWidth - offset, top: mouseY + offset },
+      { left: mouseX + offset, top: mouseY - tooltipHeight - offset },
+      { left: mouseX - tooltipWidth - offset, top: mouseY - tooltipHeight - offset }
+    ];
+
+    let chosen = candidates[0];
+    for (const candidate of candidates) {
+      const left = Math.max(padding, Math.min(candidate.left, width - tooltipWidth - padding));
+      const top = Math.max(padding, Math.min(candidate.top, height - tooltipHeight - padding));
+      const box = {
+        left,
+        top,
+        right: left + tooltipWidth,
+        bottom: top + tooltipHeight
+      };
+
+      if (!avoidBox || !boxesOverlap(box, avoidBox)) {
+        chosen = { left, top };
+        break;
+      }
+    }
+
+    node.style.left = `${chosen.left}px`;
+    node.style.top = `${chosen.top}px`;
+    node.style.visibility = "visible";
+  }
+
+  function hideTooltip(node) {
+    node.style.display = "none";
+    node.style.visibility = "hidden";
   }
 
   function updateHover(event) {
-    if (pinnedPoint) {
-      return;
-    }
-
     const [mouseX, mouseY] = d3.pointer(event, canvas);
     if (mouseX < plotLeft || mouseX > plotRight || mouseY < plotTop || mouseY > plotBottom) {
-      hideTooltip();
+      hideTooltip(hoverTooltip);
       return;
     }
 
     if (!currentQuadtree) {
-      hideTooltip();
+      hideTooltip(hoverTooltip);
       return;
     }
 
     const hoveredPoint = currentQuadtree.find(mouseX, mouseY, 6);
     if (!hoveredPoint) {
-      hideTooltip();
+      hideTooltip(hoverTooltip);
       return;
     }
 
     const dx = hoveredPoint.cx - mouseX;
     const dy = hoveredPoint.cy - mouseY;
     if ((dx * dx) + (dy * dy) > 36) {
-      hideTooltip();
+      hideTooltip(hoverTooltip);
       return;
     }
 
-    showTooltip(hoveredPoint, mouseX, mouseY);
+    if (hoveredPoint.id === pinnedPointId) {
+      hideTooltip(hoverTooltip);
+      return;
+    }
+
+    showTooltip(hoverTooltip, hoveredPoint, mouseX, mouseY, pinnedTooltip);
   }
 
   function handleClick(event) {
     const [mouseX, mouseY] = d3.pointer(event, canvas);
     const hoveredPoint = currentQuadtree?.find(mouseX, mouseY, 6) ?? null;
     if (!hoveredPoint) {
-      pinnedPoint = null;
-      hideTooltip();
+      pinnedPointId = null;
+      hideTooltip(pinnedTooltip);
+      hideTooltip(hoverTooltip);
       return;
     }
 
     const dx = hoveredPoint.cx - mouseX;
     const dy = hoveredPoint.cy - mouseY;
     if ((dx * dx) + (dy * dy) > 36) {
-      pinnedPoint = null;
-      hideTooltip();
+      pinnedPointId = null;
+      hideTooltip(pinnedTooltip);
+      hideTooltip(hoverTooltip);
       return;
     }
 
-    pinnedPoint = hoveredPoint;
-    showTooltip(hoveredPoint, hoveredPoint.cx, hoveredPoint.cy);
+    pinnedPointId = hoveredPoint.id;
+    hideTooltip(hoverTooltip);
+    showTooltip(pinnedTooltip, hoveredPoint, hoveredPoint.cx, hoveredPoint.cy);
   }
 
   canvas.addEventListener("mousemove", updateHover);
   canvas.addEventListener("mouseleave", () => {
-    if (!pinnedPoint) {
-      hideTooltip();
-    }
+    hideTooltip(hoverTooltip);
   });
   canvas.addEventListener("click", handleClick);
 
@@ -305,11 +363,12 @@ export function zoomablePlot({
   d3.select(canvas).on("dblclick.zoom", null);
   canvas.addEventListener("dblclick", (event) => {
     event.preventDefault();
-    pinnedPoint = null;
+    pinnedPointId = null;
+    hideTooltip(pinnedTooltip);
     d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
   });
 
-  container.append(canvas, tooltip);
+  container.append(canvas, pinnedTooltip, hoverTooltip);
   render();
   return container;
 }

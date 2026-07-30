@@ -13,7 +13,7 @@ export function zoomablePlot({
   yLabel = null,
   colorDomain,
   colorRange,
-  scaleExtent = [1, 20]
+  scaleExtent = [1, 60]
 }) {
   const x0 = d3.scaleLinear().domain(xDomain).range([marginLeft, width - margin]);
   const y0 = d3.scaleLinear().domain(yDomain).range([height - marginBottom, margin]);
@@ -175,7 +175,7 @@ export function zoomablePlot({
       }
 
       canvasContext.fillStyle = point.color;
-      canvasContext.fillRect(cx - 1, cy - 1, 2, 2);
+      canvasContext.fillRect(cx - 1.5, cy - 1.5, 4, 4);
       renderedPoints.push({ ...point, cx, cy });
     }
 

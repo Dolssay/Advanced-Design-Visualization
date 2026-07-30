@@ -21,8 +21,8 @@ export function zoomablePlot({
   let currentXDomain = xDomain;
   let currentYDomain = yDomain;
   let currentTransform = d3.zoomIdentity;
-  let renderQueued = false;
   let currentQuadtree = null;
+  let renderQueued = false;
 
   const fill = colorDomain
     ? d3.scaleOrdinal().domain(colorDomain).range(colorRange)
@@ -43,14 +43,7 @@ export function zoomablePlot({
   canvas.style.position = "absolute";
   canvas.style.inset = "0";
   canvas.style.display = "block";
-
-  const svg = d3.create("svg")
-    .attr("width", width)
-    .attr("height", height)
-    .style("position", "absolute")
-    .style("inset", "0")
-    .style("overflow", "hidden")
-    .style("display", "block");
+  canvas.style.cursor = "crosshair";
 
   const tooltip = document.createElement("div");
   tooltip.style.position = "absolute";
@@ -66,45 +59,11 @@ export function zoomablePlot({
   tooltip.style.zIndex = "3";
   tooltip.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.18)";
 
-  const clipId = `clip-${Math.random().toString(36).slice(2)}`;
-  svg.append("defs")
-    .append("clipPath")
-    .attr("id", clipId)
-    .append("rect")
-    .attr("x", marginLeft)
-    .attr("y", margin)
-    .attr("width", width - marginLeft - margin)
-    .attr("height", height - margin - marginBottom);
-
-  const chart = svg.append("g");
-  const xAxisLayer = chart.append("g");
-  const yAxisLayer = chart.append("g");
-  const interactionLayer = chart.append("rect")
-    .attr("x", marginLeft)
-    .attr("y", margin)
-    .attr("width", width - marginLeft - margin)
-    .attr("height", height - margin - marginBottom)
-    .attr("fill", "transparent")
-    .style("cursor", "crosshair");
-
-  if (xLabel) {
-    svg.append("text")
-      .attr("x", (marginLeft + width - margin) / 2)
-      .attr("y", height - 8)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#222")
-      .style("font-size", "12px")
-      .text(xLabel);
-  }
-
-  if (yLabel) {
-    svg.append("text")
-      .attr("transform", `translate(14, ${(height - marginBottom + margin) / 2}) rotate(-90)`)
-      .attr("text-anchor", "middle")
-      .attr("fill", "#222")
-      .style("font-size", "12px")
-      .text(yLabel);
-  }
+  const canvasContext = canvas.getContext("2d");
+  const plotLeft = marginLeft;
+  const plotTop = margin;
+  const plotRight = width - margin;
+  const plotBottom = height - marginBottom;
 
   const groupedPoints = colorDomain
     ? colorDomain.map((label) => ({
@@ -126,12 +85,6 @@ export function zoomablePlot({
     }
   }
 
-  const canvasContext = canvas.getContext("2d");
-  const plotLeft = marginLeft;
-  const plotTop = margin;
-  const plotRight = width - margin;
-  const plotBottom = height - marginBottom;
-
   function getScales() {
     return {
       xScale: d3.scaleLinear().domain(currentXDomain).range([plotLeft, plotRight]),
@@ -139,32 +92,74 @@ export function zoomablePlot({
     };
   }
 
-  function drawAxes() {
-    const { xScale, yScale } = getScales();
+  function drawAxes(context, xScale, yScale) {
+    const xTicks = xScale.ticks(5);
+    const yTicks = yScale.ticks(5);
 
-    const xAxis = d3.axisBottom(xScale).ticks(5).tickSize(-1 * (plotBottom - plotTop));
-    const yAxis = d3.axisLeft(yScale).ticks(5).tickSize(-1 * (plotRight - plotLeft));
+    context.save();
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.strokeStyle = "#e6e6e6";
+    context.fillStyle = "#222";
+    context.lineWidth = 1;
+    context.font = "12px Arial, sans-serif";
 
-    xAxisLayer
-      .attr("transform", `translate(0,${plotBottom})`)
-      .call(xAxis)
-      .call((g) => g.selectAll("line").attr("stroke", "#e6e6e6"))
-      .call((g) => g.selectAll("path").attr("stroke", "#999"));
+    context.beginPath();
+    for (const tick of xTicks) {
+      const x = xScale(tick);
+      context.moveTo(x, plotTop);
+      context.lineTo(x, plotBottom);
+    }
+    for (const tick of yTicks) {
+      const y = yScale(tick);
+      context.moveTo(plotLeft, y);
+      context.lineTo(plotRight, y);
+    }
+    context.stroke();
 
-    yAxisLayer
-      .attr("transform", `translate(${plotLeft},0)`)
-      .call(yAxis)
-      .call((g) => g.selectAll("line").attr("stroke", "#e6e6e6"))
-      .call((g) => g.selectAll("path").attr("stroke", "#999"));
+    context.strokeStyle = "#999";
+    context.beginPath();
+    context.moveTo(plotLeft, plotBottom);
+    context.lineTo(plotRight, plotBottom);
+    context.moveTo(plotLeft, plotTop);
+    context.lineTo(plotLeft, plotBottom);
+    context.stroke();
+
+    context.textAlign = "center";
+    context.textBaseline = "top";
+    for (const tick of xTicks) {
+      context.fillText(String(tick), xScale(tick), plotBottom + 6);
+    }
+
+    context.textAlign = "right";
+    context.textBaseline = "middle";
+    for (const tick of yTicks) {
+      context.fillText(String(tick), plotLeft - 6, yScale(tick));
+    }
+
+    if (xLabel) {
+      context.textAlign = "center";
+      context.textBaseline = "top";
+      context.fillText(xLabel, (plotLeft + plotRight) / 2, height - 16);
+    }
+
+    if (yLabel) {
+      context.save();
+      context.translate(14, (plotTop + plotBottom) / 2);
+      context.rotate(-Math.PI / 2);
+      context.textAlign = "center";
+      context.textBaseline = "middle";
+      context.fillText(yLabel, 0, 0);
+      context.restore();
+    }
+
+    context.restore();
   }
 
-  function drawPoints() {
-    const { xScale, yScale } = getScales();
+  function drawPoints(context, xScale, yScale) {
     const renderedPoints = [];
-
-    canvasContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    canvasContext.clearRect(0, 0, width, height);
-    canvasContext.globalAlpha = 0.75;
+    context.save();
+    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.globalAlpha = 0.75;
 
     for (const point of pointData) {
       const cx = xScale(point.x);
@@ -174,10 +169,12 @@ export function zoomablePlot({
         continue;
       }
 
-      canvasContext.fillStyle = point.color;
-      canvasContext.fillRect(cx - 1.5, cy - 1.5, 4, 4);
+      context.fillStyle = point.color;
+      context.fillRect(cx - 1.5, cy - 1.5, 4, 4);
       renderedPoints.push({ ...point, cx, cy });
     }
+
+    context.restore();
 
     currentQuadtree = d3.quadtree()
       .x((d) => d.cx)
@@ -187,8 +184,10 @@ export function zoomablePlot({
 
   function render() {
     renderQueued = false;
-    drawAxes();
-    drawPoints();
+    const { xScale, yScale } = getScales();
+    canvasContext.clearRect(0, 0, width, height);
+    drawAxes(canvasContext, xScale, yScale);
+    drawPoints(canvasContext, xScale, yScale);
   }
 
   function scheduleRender() {
@@ -215,7 +214,7 @@ export function zoomablePlot({
   }
 
   function updateHover(event) {
-    const [mouseX, mouseY] = d3.pointer(event, svg.node());
+    const [mouseX, mouseY] = d3.pointer(event, canvas);
     if (mouseX < plotLeft || mouseX > plotRight || mouseY < plotTop || mouseY > plotBottom) {
       hideTooltip();
       return;
@@ -242,9 +241,8 @@ export function zoomablePlot({
     showTooltip(hoveredPoint, mouseX, mouseY);
   }
 
-  interactionLayer
-    .on("mousemove", updateHover)
-    .on("mouseleave", hideTooltip);
+  canvas.addEventListener("mousemove", updateHover);
+  canvas.addEventListener("mouseleave", hideTooltip);
 
   const zoom = d3.zoom()
     .scaleExtent(scaleExtent)
@@ -263,16 +261,16 @@ export function zoomablePlot({
       scheduleRender();
     });
 
-  interactionLayer.call(zoom);
-  interactionLayer.node().__zoom = currentTransform;
+  d3.select(canvas).call(zoom);
+  canvas.__zoom = currentTransform;
 
-  interactionLayer.on("dblclick.zoom", null);
-  interactionLayer.on("dblclick", (event) => {
+  d3.select(canvas).on("dblclick.zoom", null);
+  canvas.addEventListener("dblclick", (event) => {
     event.preventDefault();
-    interactionLayer.call(zoom.transform, d3.zoomIdentity);
+    d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
   });
 
-  container.append(canvas, svg.node(), tooltip);
+  container.append(canvas, tooltip);
   render();
   return container;
 }

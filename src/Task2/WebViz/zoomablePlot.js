@@ -23,6 +23,7 @@ export function zoomablePlot({
   let currentTransform = d3.zoomIdentity;
   let currentQuadtree = null;
   let renderQueued = false;
+  let pinnedPoint = null;
 
   const fill = colorDomain
     ? d3.scaleOrdinal().domain(colorDomain).range(colorRange)
@@ -170,7 +171,7 @@ export function zoomablePlot({
       }
 
       context.fillStyle = point.color;
-      context.fillRect(cx - 1.5, cy - 1.5, 4, 4);
+      context.fillRect(cx - 1.5, cy - 1.5, 4.5, 4.5);
       renderedPoints.push({ ...point, cx, cy });
     }
 
@@ -188,6 +189,13 @@ export function zoomablePlot({
     canvasContext.clearRect(0, 0, width, height);
     drawAxes(canvasContext, xScale, yScale);
     drawPoints(canvasContext, xScale, yScale);
+    if (pinnedPoint) {
+      showTooltip(
+        pinnedPoint,
+        xScale(pinnedPoint.x),
+        yScale(pinnedPoint.y)
+      );
+    }
   }
 
   function scheduleRender() {
@@ -214,6 +222,10 @@ export function zoomablePlot({
   }
 
   function updateHover(event) {
+    if (pinnedPoint) {
+      return;
+    }
+
     const [mouseX, mouseY] = d3.pointer(event, canvas);
     if (mouseX < plotLeft || mouseX > plotRight || mouseY < plotTop || mouseY > plotBottom) {
       hideTooltip();
@@ -241,8 +253,34 @@ export function zoomablePlot({
     showTooltip(hoveredPoint, mouseX, mouseY);
   }
 
+  function handleClick(event) {
+    const [mouseX, mouseY] = d3.pointer(event, canvas);
+    const hoveredPoint = currentQuadtree?.find(mouseX, mouseY, 6) ?? null;
+    if (!hoveredPoint) {
+      pinnedPoint = null;
+      hideTooltip();
+      return;
+    }
+
+    const dx = hoveredPoint.cx - mouseX;
+    const dy = hoveredPoint.cy - mouseY;
+    if ((dx * dx) + (dy * dy) > 36) {
+      pinnedPoint = null;
+      hideTooltip();
+      return;
+    }
+
+    pinnedPoint = hoveredPoint;
+    showTooltip(hoveredPoint, hoveredPoint.cx, hoveredPoint.cy);
+  }
+
   canvas.addEventListener("mousemove", updateHover);
-  canvas.addEventListener("mouseleave", hideTooltip);
+  canvas.addEventListener("mouseleave", () => {
+    if (!pinnedPoint) {
+      hideTooltip();
+    }
+  });
+  canvas.addEventListener("click", handleClick);
 
   const zoom = d3.zoom()
     .scaleExtent(scaleExtent)
@@ -267,6 +305,7 @@ export function zoomablePlot({
   d3.select(canvas).on("dblclick.zoom", null);
   canvas.addEventListener("dblclick", (event) => {
     event.preventDefault();
+    pinnedPoint = null;
     d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
   });
 

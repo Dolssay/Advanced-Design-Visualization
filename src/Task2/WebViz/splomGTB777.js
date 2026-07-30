@@ -49,7 +49,7 @@ export function createScatterplotMatrix(data) {
     { key: "Cruise CD (count)" }
   ];
 
-  const cellSize = 250;
+  const cellSize = 375;
   const n = variables.length;
 
   const container = document.createElement("div");

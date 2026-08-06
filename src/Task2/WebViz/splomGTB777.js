@@ -41,7 +41,7 @@ function createLegend() {
   return legend;
 }
 
-export function createScatterplotMatrix(data) {
+export function createScatterplotMatrix(data, controller) {
   const sortedData = [...data].sort((a, b) => drawOrder[a.Label] - drawOrder[b.Label]);
   const variables = [
     { key: "OEW (1000 lbm)" },
@@ -61,7 +61,7 @@ export function createScatterplotMatrix(data) {
   const header = document.createElement("div");
   header.style.textAlign = "center";
   header.innerHTML = `<div style="font-family:'Times New Roman', serif; font-size:20px; font-weight:700; margin-bottom:6px;">GTB777 Scatterplot Matrix</div>
-    <div style="font-family:Arial, sans-serif; font-size:13px; color:#666;">Scroll or pinch to zoom, drag to pan, double-click to reset.</div>`;
+    <div style="font-family:Arial, sans-serif; font-size:13px; color:#666;">Use the Tools bar to move, select, zoom, brush, or lasso. Double-click resets the plot.</div>`;
 
   const grid = document.createElement("div");
   grid.style.display = "grid";
@@ -93,7 +93,9 @@ export function createScatterplotMatrix(data) {
         xLabel: row === n - 1 ? xVar.key : null,
         yLabel: col === 0 ? yVar.key : null,
         colorDomain,
-        colorRange
+        colorRange,
+        controller,
+        plotId: `r${row}c${col}`
       });
       plot.style.border = "1px solid #ccc";
       grid.appendChild(plot);

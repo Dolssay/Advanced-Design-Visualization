@@ -13,20 +13,19 @@ export function zoomablePlot({
   yLabel = null,
   colorDomain,
   colorRange,
-  scaleExtent = [1, 60]
+  scaleExtent = [1, 60],
+  controller = null,
+  plotId = null
 }) {
   const x0 = d3.scaleLinear().domain(xDomain).range([marginLeft, width - margin]);
   const y0 = d3.scaleLinear().domain(yDomain).range([height - marginBottom, margin]);
 
-  let currentXDomain = xDomain;
-  let currentYDomain = yDomain;
-  let currentTransform = d3.zoomIdentity;
-  let currentQuadtree = null;
-  let currentRenderedPointsById = new Map();
-  let renderQueued = false;
-  let pinnedPointIds = [];
-  let pinnedTooltipNodes = new Map();
-  let altHeld = false;
+  const plotLeft = marginLeft;
+  const plotTop = margin;
+  const plotRight = width - margin;
+  const plotBottom = height - marginBottom;
+  const plotWidth = plotRight - plotLeft;
+  const plotHeight = plotBottom - plotTop;
 
   const fill = colorDomain
     ? d3.scaleOrdinal().domain(colorDomain).range(colorRange)
@@ -47,12 +46,27 @@ export function zoomablePlot({
   canvas.style.position = "absolute";
   canvas.style.inset = "0";
   canvas.style.display = "block";
-  canvas.style.cursor = "crosshair";
+
+  const selectionOverlay = controller?.createSelectionOverlay
+    ? controller.createSelectionOverlay(container)
+    : (() => {
+        const overlay = document.createElement("div");
+        overlay.style.position = "absolute";
+        overlay.style.display = "none";
+        overlay.style.border = "1px dashed #4a90e2";
+        overlay.style.background = "rgba(74, 144, 226, 0.12)";
+        overlay.style.pointerEvents = "none";
+        overlay.style.zIndex = "2";
+        overlay.style.boxSizing = "border-box";
+        container.appendChild(overlay);
+        return overlay;
+      })();
 
   const pinnedTooltipLayer = document.createElement("div");
   pinnedTooltipLayer.style.position = "absolute";
   pinnedTooltipLayer.style.inset = "0";
   pinnedTooltipLayer.style.pointerEvents = "none";
+  pinnedTooltipLayer.style.zIndex = "3";
 
   function createTooltip(backgroundColor) {
     const node = document.createElement("div");
@@ -67,18 +81,14 @@ export function zoomablePlot({
     node.style.fontSize = "12px";
     node.style.lineHeight = "1.35";
     node.style.whiteSpace = "pre-line";
-    node.style.zIndex = "3";
+    node.style.zIndex = "4";
     node.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.18)";
     return node;
   }
 
   const hoverTooltip = createTooltip("rgba(36, 36, 36, 0.92)");
-
   const canvasContext = canvas.getContext("2d");
-  const plotLeft = marginLeft;
-  const plotTop = margin;
-  const plotRight = width - margin;
-  const plotBottom = height - marginBottom;
+  const plotSelection = d3.select(canvas);
 
   const groupedPoints = colorDomain
     ? colorDomain.map((label) => ({
@@ -99,6 +109,59 @@ export function zoomablePlot({
         title: `${row.Label ?? ""}\n${xKey}: ${row[xKey]}\n${yKey}: ${row[yKey]}`
       });
     }
+  }
+
+  let currentXDomain = [...xDomain];
+  let currentYDomain = [...yDomain];
+  let currentTransform = d3.zoomIdentity;
+  let currentQuadtree = null;
+  let currentRenderedPointsById = new Map();
+  let renderQueued = false;
+  let pinnedTooltipNodes = new Map();
+  let altHeld = false;
+  let isDragging = false;
+  let dragState = null;
+
+  function getTool() {
+    return controller?.getTool?.() ?? "move";
+  }
+
+  function isTooltipVisible() {
+    return !altHeld && (controller?.isTooltipEnabled?.() ?? true);
+  }
+
+  function getPinnedIds() {
+    return controller?.getPinnedIds?.(plotId) ?? new Set();
+  }
+
+  function setCursor() {
+    const tool = getTool();
+    if (tool === "move") {
+      canvas.style.cursor = isDragging ? "grabbing" : "pointer";
+      return;
+    }
+
+    if (tool === "select") {
+      canvas.style.cursor = "default";
+      return;
+    }
+
+    if (tool === "zoom-in") {
+      canvas.style.cursor = "zoom-in";
+      return;
+    }
+
+    if (tool === "zoom-out") {
+      canvas.style.cursor = "zoom-out";
+      return;
+    }
+
+    if (tool === "lasso") {
+      canvas.style.cursor = "crosshair";
+      return;
+    }
+
+    canvas.style.cursor = "cell";
   }
 
   function getScales() {
@@ -176,7 +239,7 @@ export function zoomablePlot({
     currentRenderedPointsById = new Map();
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    context.globalAlpha = 0.75;
+    context.globalAlpha = 0.78;
 
     for (const point of pointData) {
       const cx = xScale(point.x);
@@ -193,18 +256,18 @@ export function zoomablePlot({
       currentRenderedPointsById.set(point.id, renderedPoint);
     }
 
-    for (const pinnedPointId of pinnedPointIds) {
+    const pinnedIds = getPinnedIds();
+    for (const pinnedPointId of pinnedIds) {
       const pinnedPoint = currentRenderedPointsById.get(pinnedPointId);
       if (!pinnedPoint) {
         continue;
       }
 
-      context.strokeStyle = "#ffffff";
-      context.lineWidth = 2;
-      context.strokeRect(pinnedPoint.cx - 3, pinnedPoint.cy - 3, 7, 7);
-      context.strokeStyle = "#2ecc71";
-      context.lineWidth = 3;
-      context.strokeRect(pinnedPoint.cx - 3, pinnedPoint.cy - 3, 7, 7);
+      context.save();
+      context.strokeStyle = "#16a34a";
+      context.lineWidth = 1.25;
+      context.strokeRect(pinnedPoint.cx - 2.25, pinnedPoint.cy - 2.25, 4.5, 4.5);
+      context.restore();
     }
 
     context.restore();
@@ -282,6 +345,18 @@ export function zoomablePlot({
     }
   }
 
+  function clearPinnedTooltipNodes() {
+    for (const node of pinnedTooltipNodes.values()) {
+      node.remove();
+    }
+    pinnedTooltipNodes = new Map();
+  }
+
+  function syncCurrentDomains() {
+    currentXDomain = currentTransform.rescaleX(x0).domain();
+    currentYDomain = currentTransform.rescaleY(y0).domain();
+  }
+
   function render() {
     renderQueued = false;
     const { xScale, yScale } = getScales();
@@ -289,7 +364,7 @@ export function zoomablePlot({
     drawAxes(canvasContext, xScale, yScale);
     drawPoints(canvasContext, xScale, yScale);
 
-    if (altHeld) {
+    if (!isTooltipVisible()) {
       hideTooltip(hoverTooltip);
       hideAllPinnedTooltips();
       return;
@@ -298,7 +373,7 @@ export function zoomablePlot({
     const nextPinnedNodes = new Map();
     const placedNodes = [hoverTooltip];
 
-    for (const pinnedPointId of pinnedPointIds) {
+    for (const pinnedPointId of getPinnedIds()) {
       const pinnedPoint = currentRenderedPointsById.get(pinnedPointId);
       if (!pinnedPoint) {
         continue;
@@ -333,7 +408,7 @@ export function zoomablePlot({
   }
 
   function updateHover(event) {
-    if (altHeld) {
+    if (!isTooltipVisible() || dragState || isDragging) {
       hideTooltip(hoverTooltip);
       return;
     }
@@ -362,7 +437,7 @@ export function zoomablePlot({
       return;
     }
 
-    if (pinnedPointIds.includes(hoveredPoint.id)) {
+    if (getPinnedIds().has(hoveredPoint.id)) {
       hideTooltip(hoverTooltip);
       return;
     }
@@ -370,63 +445,243 @@ export function zoomablePlot({
     positionTooltip(hoverTooltip, hoveredPoint, mouseX, mouseY, Array.from(pinnedTooltipNodes.values()));
   }
 
-  function clearPins() {
-    pinnedPointIds = [];
-    for (const node of pinnedTooltipNodes.values()) {
-      node.remove();
-    }
-    pinnedTooltipNodes = new Map();
-    hideTooltip(hoverTooltip);
-  }
-
-  function handleClick(event) {
-    if (altHeld) {
-      return;
-    }
-
+  function getPointAtPointer(event) {
     const [mouseX, mouseY] = d3.pointer(event, canvas);
     const hoveredPoint = currentQuadtree?.find(mouseX, mouseY, 6) ?? null;
     if (!hoveredPoint) {
-      if (!event.ctrlKey) {
-        clearPins();
-      }
-      return;
+      return { hoveredPoint: null, mouseX, mouseY };
     }
 
     const dx = hoveredPoint.cx - mouseX;
     const dy = hoveredPoint.cy - mouseY;
     if ((dx * dx) + (dy * dy) > 36) {
-      if (!event.ctrlKey) {
-        clearPins();
-      }
+      return { hoveredPoint: null, mouseX, mouseY };
+    }
+
+    return { hoveredPoint, mouseX, mouseY };
+  }
+
+  function zoomToTransform(nextTransform) {
+    plotSelection.call(zoom.transform, nextTransform);
+  }
+
+  function zoomAroundPoint(factor, mouseX, mouseY) {
+    const nextK = Math.max(scaleExtent[0], Math.min(scaleExtent[1], currentTransform.k * factor));
+    const baseX = currentTransform.invertX(mouseX);
+    const baseY = currentTransform.invertY(mouseY);
+    const nextX = mouseX - nextK * baseX;
+    const nextY = mouseY - nextK * baseY;
+    zoomToTransform(d3.zoomIdentity.scale(nextK).translate(nextX / nextK, nextY / nextK));
+  }
+
+  function zoomToSelection(rect) {
+    const baseLeft = currentTransform.invertX(rect.left);
+    const baseRight = currentTransform.invertX(rect.right);
+    const baseTop = currentTransform.invertY(rect.top);
+    const baseBottom = currentTransform.invertY(rect.bottom);
+    const baseWidth = Math.abs(baseRight - baseLeft);
+    const baseHeight = Math.abs(baseBottom - baseTop);
+
+    if (baseWidth < 8 || baseHeight < 8) {
       return;
     }
 
-    if (event.ctrlKey) {
-      if (pinnedPointIds.includes(hoveredPoint.id)) {
-        pinnedPointIds = pinnedPointIds.filter((id) => id !== hoveredPoint.id);
-        const node = pinnedTooltipNodes.get(hoveredPoint.id);
-        if (node) {
-          node.remove();
-          pinnedTooltipNodes.delete(hoveredPoint.id);
-        }
-      } else {
-        pinnedPointIds = [...pinnedPointIds, hoveredPoint.id];
-      }
-    } else {
-      clearPins();
-      pinnedPointIds = [hoveredPoint.id];
+    const k = Math.max(
+      scaleExtent[0],
+      Math.min(scaleExtent[1], Math.min(plotWidth / baseWidth, plotHeight / baseHeight))
+    );
+    const baseCenterX = (baseLeft + baseRight) / 2;
+    const baseCenterY = (baseTop + baseBottom) / 2;
+    const targetCenterX = (plotLeft + plotRight) / 2;
+    const targetCenterY = (plotTop + plotBottom) / 2;
+    const nextX = targetCenterX - k * baseCenterX;
+    const nextY = targetCenterY - k * baseCenterY;
+    zoomToTransform(d3.zoomIdentity.scale(k).translate(nextX / k, nextY / k));
+  }
+
+  function getSelectionRectFromDrag() {
+    if (!dragState) {
+      return null;
     }
 
+    const left = Math.max(plotLeft, Math.min(dragState.startX, dragState.currentX));
+    const right = Math.min(plotRight, Math.max(dragState.startX, dragState.currentX));
+    const top = Math.max(plotTop, Math.min(dragState.startY, dragState.currentY));
+    const bottom = Math.min(plotBottom, Math.max(dragState.startY, dragState.currentY));
+
+    if (right <= left || bottom <= top) {
+      return null;
+    }
+
+    return { left, top, right, bottom };
+  }
+
+  function showSelectionOverlay(rect) {
+    selectionOverlay.style.display = "block";
+    selectionOverlay.style.left = `${rect.left}px`;
+    selectionOverlay.style.top = `${rect.top}px`;
+    selectionOverlay.style.width = `${rect.right - rect.left}px`;
+    selectionOverlay.style.height = `${rect.bottom - rect.top}px`;
+  }
+
+  function hideSelectionOverlay() {
+    selectionOverlay.style.display = "none";
+  }
+
+  function getPointsInRect(rect) {
+    const ids = [];
+    for (const point of currentRenderedPointsById.values()) {
+      if (point.cx >= rect.left && point.cx <= rect.right && point.cy >= rect.top && point.cy <= rect.bottom) {
+        ids.push(point.id);
+      }
+    }
+    return ids;
+  }
+
+  function finishDrag() {
+    const rect = getSelectionRectFromDrag();
+    const tool = dragState?.tool;
+
+    if (rect && tool === "brush") {
+      const ids = getPointsInRect(rect);
+      if (ids.length) {
+        controller?.addPins?.(plotId, ids);
+        scheduleRender();
+      }
+    }
+
+    if (rect && tool === "lasso") {
+      zoomToSelection(rect);
+      if (controller?.isLinkingEnabled?.()) {
+        const normalizedRect = {
+          left: (rect.left - plotLeft) / plotWidth,
+          right: (rect.right - plotLeft) / plotWidth,
+          top: (rect.top - plotTop) / plotHeight,
+          bottom: (rect.bottom - plotTop) / plotHeight
+        };
+        controller.emit?.({
+          type: "linked-lasso",
+          sourcePlotId: plotId,
+          normalizedRect
+        });
+      }
+    }
+
+    dragState = null;
+    hideSelectionOverlay();
+    isDragging = false;
+    setCursor();
     hideTooltip(hoverTooltip);
     scheduleRender();
   }
 
-  canvas.addEventListener("mousemove", updateHover);
+  function handlePointerDown(event) {
+    if (altHeld || event.button !== 0) {
+      return;
+    }
+
+    const tool = getTool();
+    const [mouseX, mouseY] = d3.pointer(event, canvas);
+
+    if (tool === "move") {
+      isDragging = true;
+      setCursor();
+      return;
+    }
+
+    if (tool === "zoom-in") {
+      event.preventDefault();
+      zoomAroundPoint(1.35, mouseX, mouseY);
+      return;
+    }
+
+    if (tool === "zoom-out") {
+      event.preventDefault();
+      zoomAroundPoint(1 / 1.35, mouseX, mouseY);
+      return;
+    }
+
+    if (tool === "select") {
+      return;
+    }
+
+    dragState = {
+      tool,
+      startX: Math.max(plotLeft, Math.min(mouseX, plotRight)),
+      startY: Math.max(plotTop, Math.min(mouseY, plotBottom)),
+      currentX: mouseX,
+      currentY: mouseY
+    };
+    showSelectionOverlay({ left: dragState.startX, top: dragState.startY, right: dragState.startX, bottom: dragState.startY });
+    hideTooltip(hoverTooltip);
+  }
+
+  function handlePointerMove(event) {
+    if (dragState) {
+      const [mouseX, mouseY] = d3.pointer(event, canvas);
+      dragState.currentX = Math.max(plotLeft, Math.min(mouseX, plotRight));
+      dragState.currentY = Math.max(plotTop, Math.min(mouseY, plotBottom));
+      const rect = getSelectionRectFromDrag();
+      if (rect) {
+        showSelectionOverlay(rect);
+      }
+      hideTooltip(hoverTooltip);
+      return;
+    }
+
+    updateHover(event);
+  }
+
+  function handlePointerUp() {
+    if (dragState) {
+      finishDrag();
+    }
+    if (isDragging) {
+      isDragging = false;
+      setCursor();
+    }
+  }
+
+  function handleClick(event) {
+    if (altHeld || dragState) {
+      return;
+    }
+
+    const tool = getTool();
+    if (tool !== "select") {
+      return;
+    }
+
+    const { hoveredPoint } = getPointAtPointer(event);
+    if (!hoveredPoint) {
+      if (!event.ctrlKey) {
+        controller?.clearPins?.(plotId);
+        scheduleRender();
+      }
+      return;
+    }
+
+    controller?.togglePin?.(plotId, hoveredPoint.id, event.ctrlKey);
+    hideTooltip(hoverTooltip);
+    scheduleRender();
+  }
+
+  function handleDoubleClick(event) {
+    event.preventDefault();
+    currentTransform = d3.zoomIdentity;
+    syncCurrentDomains();
+    zoomToTransform(currentTransform);
+  }
+
+  canvas.addEventListener("mousemove", handlePointerMove);
   canvas.addEventListener("mouseleave", () => {
     hideTooltip(hoverTooltip);
   });
+  canvas.addEventListener("mousedown", handlePointerDown);
+  canvas.addEventListener("mouseup", handlePointerUp);
   canvas.addEventListener("click", handleClick);
+  canvas.addEventListener("dblclick", handleDoubleClick);
+  window.addEventListener("mouseup", handlePointerUp);
 
   window.addEventListener("keydown", (event) => {
     if (event.key === "Alt" && !altHeld) {
@@ -435,6 +690,7 @@ export function zoomablePlot({
       altHeld = true;
       hideTooltip(hoverTooltip);
       hideAllPinnedTooltips();
+      setCursor();
     }
   });
 
@@ -444,6 +700,7 @@ export function zoomablePlot({
       event.stopPropagation();
       altHeld = false;
       scheduleRender();
+      setCursor();
     }
   });
 
@@ -451,6 +708,7 @@ export function zoomablePlot({
     if (altHeld) {
       altHeld = false;
       scheduleRender();
+      setCursor();
     }
   });
 
@@ -458,6 +716,7 @@ export function zoomablePlot({
     if (document.visibilityState === "hidden" && altHeld) {
       altHeld = false;
       scheduleRender();
+      setCursor();
     }
   });
 
@@ -465,30 +724,64 @@ export function zoomablePlot({
     .scaleExtent(scaleExtent)
     .translateExtent([[plotLeft, plotTop], [plotRight, plotBottom]])
     .extent([[plotLeft, plotTop], [plotRight, plotBottom]])
+    .filter((event) => {
+      if (altHeld) {
+        return false;
+      }
+      return getTool() === "move" && (event.type !== "mousedown" || event.button === 0);
+    })
+    .on("start", () => {
+      isDragging = true;
+      setCursor();
+    })
     .on("zoom", (event) => {
       currentTransform = event.transform;
-      currentXDomain = currentTransform.rescaleX(x0).domain();
-      currentYDomain = currentTransform.rescaleY(y0).domain();
+      syncCurrentDomains();
       scheduleRender();
     })
     .on("end", (event) => {
       currentTransform = event.transform;
-      currentXDomain = currentTransform.rescaleX(x0).domain();
-      currentYDomain = currentTransform.rescaleY(y0).domain();
+      syncCurrentDomains();
+      isDragging = false;
+      setCursor();
       scheduleRender();
     });
 
-  d3.select(canvas).call(zoom);
-  canvas.__zoom = currentTransform;
+  plotSelection.call(zoom);
+  plotSelection.on("dblclick.zoom", null);
 
-  d3.select(canvas).on("dblclick.zoom", null);
-  canvas.addEventListener("dblclick", (event) => {
-    event.preventDefault();
-    clearPins();
-    d3.select(canvas).call(zoom.transform, d3.zoomIdentity);
-  });
+  if (controller?.subscribe) {
+    controller.subscribe((event) => {
+      if (event.type === "tool") {
+        setCursor();
+        hideTooltip(hoverTooltip);
+      }
 
-  container.append(canvas, pinnedTooltipLayer, hoverTooltip);
+      if (event.type === "tooltipMode") {
+        if (!isTooltipVisible()) {
+          hideTooltip(hoverTooltip);
+          hideAllPinnedTooltips();
+        }
+        scheduleRender();
+      }
+
+      if (event.type === "pins" && (!event.plotId || event.plotId === plotId || controller.isLinkingEnabled?.())) {
+        scheduleRender();
+      }
+
+      if (event.type === "linked-lasso" && controller.isLinkingEnabled?.() && event.sourcePlotId !== plotId) {
+        const normalizedRect = event.normalizedRect;
+        const left = plotLeft + normalizedRect.left * plotWidth;
+        const right = plotLeft + normalizedRect.right * plotWidth;
+        const top = plotTop + normalizedRect.top * plotHeight;
+        const bottom = plotTop + normalizedRect.bottom * plotHeight;
+        zoomToSelection({ left, right, top, bottom });
+      }
+    });
+  }
+
+  setCursor();
+  container.append(canvas, selectionOverlay, pinnedTooltipLayer, hoverTooltip);
   render();
   return container;
 }

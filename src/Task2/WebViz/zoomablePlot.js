@@ -130,6 +130,16 @@ export function zoomablePlot({
     return !altHeld && (controller?.isTooltipEnabled?.() ?? true);
   }
 
+  function areCursorTooltipsEnabled() {
+    const targets = controller?.getTooltipTargets?.();
+    return !altHeld && (targets ? targets.cursor : true);
+  }
+
+  function arePinnedTooltipsEnabled() {
+    const targets = controller?.getTooltipTargets?.();
+    return !altHeld && (targets ? targets.pinned : true);
+  }
+
   function getPinnedIds() {
     return controller?.getPinnedIds?.(plotId) ?? new Set();
   }
@@ -370,6 +380,11 @@ export function zoomablePlot({
       return;
     }
 
+    if (!arePinnedTooltipsEnabled()) {
+      hideAllPinnedTooltips();
+      return;
+    }
+
     const nextPinnedNodes = new Map();
     const placedNodes = [hoverTooltip];
 
@@ -408,7 +423,7 @@ export function zoomablePlot({
   }
 
   function updateHover(event) {
-    if (!isTooltipVisible() || dragState || isDragging) {
+    if (!areCursorTooltipsEnabled() || dragState || isDragging) {
       hideTooltip(hoverTooltip);
       return;
     }
@@ -758,7 +773,15 @@ export function zoomablePlot({
       }
 
       if (event.type === "tooltipMode") {
-        if (!isTooltipVisible()) {
+        const cursorEnabled = event.cursor ?? controller?.getTooltipTargets?.().cursor ?? true;
+        const pinnedEnabled = event.pinned ?? controller?.getTooltipTargets?.().pinned ?? true;
+        if (!cursorEnabled) {
+          hideTooltip(hoverTooltip);
+        }
+        if (!pinnedEnabled) {
+          hideAllPinnedTooltips();
+        }
+        if (!cursorEnabled && !pinnedEnabled) {
           hideTooltip(hoverTooltip);
           hideAllPinnedTooltips();
         }

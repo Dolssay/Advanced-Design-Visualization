@@ -109,6 +109,32 @@ function createStyleElement() {
       height: 16px;
       margin: 0;
     }
+    .tool-details {
+      position: relative;
+    }
+    .tool-details summary {
+      list-style: none;
+      cursor: pointer;
+      user-select: none;
+    }
+    .tool-details summary::-webkit-details-marker {
+      display: none;
+    }
+    .tool-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      left: 0;
+      min-width: 190px;
+      padding: 10px;
+      border: 1px solid #d1d1d1;
+      border-radius: 10px;
+      background: #fff;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
     .tools-root[data-compact="true"] {
       flex-direction: column;
       align-items: stretch;
@@ -130,7 +156,8 @@ function createStyleElement() {
 export function createToolController() {
   const state = {
     tool: "move",
-    tooltipMode: "on",
+    tooltipCursor: true,
+    tooltipPinned: true,
     linking: false
   };
 
@@ -169,10 +196,16 @@ export function createToolController() {
       return state.tool;
     },
     getTooltipMode() {
-      return state.tooltipMode;
+      return state.tooltipCursor || state.tooltipPinned ? "on" : "off";
     },
     isTooltipEnabled() {
-      return state.tooltipMode !== "off";
+      return state.tooltipCursor || state.tooltipPinned;
+    },
+    getTooltipTargets() {
+      return {
+        cursor: state.tooltipCursor,
+        pinned: state.tooltipPinned
+      };
     },
     isLinkingEnabled() {
       return state.linking;
@@ -183,9 +216,24 @@ export function createToolController() {
       emit({ type: "tool", tool });
     },
     setTooltipMode(mode) {
-      if (state.tooltipMode === mode) return;
-      state.tooltipMode = mode;
-      emit({ type: "tooltipMode", mode });
+      const next = mode === "on";
+      if (state.tooltipCursor === next && state.tooltipPinned === next) return;
+      state.tooltipCursor = next;
+      state.tooltipPinned = next;
+      emit({ type: "tooltipMode", mode: next ? "on" : "off" });
+    },
+    setTooltipTargets(targets) {
+      const nextCursor = Boolean(targets?.cursor);
+      const nextPinned = Boolean(targets?.pinned);
+      if (state.tooltipCursor === nextCursor && state.tooltipPinned === nextPinned) return;
+      state.tooltipCursor = nextCursor;
+      state.tooltipPinned = nextPinned;
+      emit({
+        type: "tooltipMode",
+        mode: nextCursor || nextPinned ? "on" : "off",
+        cursor: nextCursor,
+        pinned: nextPinned
+      });
     },
     setLinking(linking) {
       if (state.linking === linking) return;
@@ -299,14 +347,55 @@ export function createToolsBar(controller) {
   tooltipField.className = "tool-field";
   const tooltipLabel = document.createElement("label");
   tooltipLabel.textContent = "Tooltips";
-  const tooltipSelect = document.createElement("select");
-  tooltipSelect.className = "tool-select";
-  tooltipSelect.innerHTML = `
-    <option value="on">On</option>
-    <option value="off">Off</option>
-  `;
-  tooltipSelect.addEventListener("change", () => controller.setTooltipMode(tooltipSelect.value));
-  tooltipField.append(tooltipLabel, tooltipSelect);
+  const tooltipToggle = document.createElement("input");
+  tooltipToggle.type = "checkbox";
+  tooltipToggle.title = "Enable or disable tooltips";
+  const tooltipDetails = document.createElement("details");
+  tooltipDetails.className = "tool-details";
+  const tooltipSummary = document.createElement("summary");
+  tooltipSummary.textContent = "▾";
+  const tooltipMenu = document.createElement("div");
+  tooltipMenu.className = "tool-menu";
+  const cursorTooltipLabel = document.createElement("label");
+  cursorTooltipLabel.className = "tool-switch";
+  const cursorTooltipInput = document.createElement("input");
+  cursorTooltipInput.type = "checkbox";
+  const cursorTooltipText = document.createElement("span");
+  cursorTooltipText.textContent = "Cursor tooltip";
+  cursorTooltipLabel.append(cursorTooltipInput, cursorTooltipText);
+  const pinnedTooltipLabel = document.createElement("label");
+  pinnedTooltipLabel.className = "tool-switch";
+  const pinnedTooltipInput = document.createElement("input");
+  pinnedTooltipInput.type = "checkbox";
+  const pinnedTooltipText = document.createElement("span");
+  pinnedTooltipText.textContent = "Chosen points";
+  pinnedTooltipLabel.append(pinnedTooltipInput, pinnedTooltipText);
+  tooltipMenu.append(cursorTooltipLabel, pinnedTooltipLabel);
+  tooltipDetails.append(tooltipSummary, tooltipMenu);
+  tooltipToggle.addEventListener("change", () => {
+    const enabled = tooltipToggle.checked;
+    if (!enabled) {
+      controller.setTooltipTargets({ cursor: false, pinned: false });
+      return;
+    }
+    const current = controller.getTooltipTargets();
+    if (!current.cursor && !current.pinned) {
+      controller.setTooltipTargets({ cursor: true, pinned: true });
+    }
+  });
+  cursorTooltipInput.addEventListener("change", () => {
+    controller.setTooltipTargets({
+      cursor: cursorTooltipInput.checked,
+      pinned: pinnedTooltipInput.checked
+    });
+  });
+  pinnedTooltipInput.addEventListener("change", () => {
+    controller.setTooltipTargets({
+      cursor: cursorTooltipInput.checked,
+      pinned: pinnedTooltipInput.checked
+    });
+  });
+  tooltipField.append(tooltipLabel, tooltipToggle, tooltipDetails);
 
   const linkingField = document.createElement("label");
   linkingField.className = "tool-switch";
@@ -324,7 +413,10 @@ export function createToolsBar(controller) {
     for (const [toolId, button] of buttons.entries()) {
       button.dataset.active = String(controller.getTool() === toolId);
     }
-    tooltipSelect.value = controller.getTooltipMode();
+    const tooltipTargets = controller.getTooltipTargets();
+    tooltipToggle.checked = tooltipTargets.cursor || tooltipTargets.pinned;
+    cursorTooltipInput.checked = tooltipTargets.cursor;
+    pinnedTooltipInput.checked = tooltipTargets.pinned;
     linkingInput.checked = controller.isLinkingEnabled();
   };
 

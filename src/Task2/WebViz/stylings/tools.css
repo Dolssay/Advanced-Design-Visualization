@@ -59,6 +59,26 @@
   color: #fff;
 }
 
+.tool-button-dropdown {
+  position: relative;
+}
+
+.tool-button-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-button-arrow {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tool-menu-button {
+  font-size: 14px;
+  line-height: 1;
+}
+
 .tool-field {
   display: flex;
   align-items: center;

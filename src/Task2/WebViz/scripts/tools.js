@@ -1,6 +1,5 @@
 const TOOL_OPTIONS = [
   { id: "move", label: "Move", cursor: "grab" },
-  { id: "select", label: "Select", cursor: "default" },
   { id: "zoom-in", label: "Zoom In", cursor: "zoom-in" },
   { id: "zoom-out", label: "Zoom Out", cursor: "zoom-out" },
   { id: "lasso", label: "Lasso", cursor: "crosshair" },
@@ -10,6 +9,7 @@ const TOOL_OPTIONS = [
 export function createToolController() {
   const state = {
     tool: "move",
+    moveSelect: false,
     tooltipCursor: true,
     tooltipPinned: true,
     linking: false
@@ -64,10 +64,18 @@ export function createToolController() {
     isLinkingEnabled() {
       return state.linking;
     },
+    isMoveSelectEnabled() {
+      return state.moveSelect;
+    },
     setTool(tool) {
       if (state.tool === tool) return;
       state.tool = tool;
       emit({ type: "tool", tool });
+    },
+    setMoveSelect(moveSelect) {
+      if (state.moveSelect === moveSelect) return;
+      state.moveSelect = moveSelect;
+      emit({ type: "moveSelect", moveSelect });
     },
     setTooltipMode(mode) {
       const next = mode === "on";
@@ -175,8 +183,57 @@ export function createToolsBar(controller) {
   right.className = "tools-right";
 
   const buttons = new Map();
+  const dropdownDetails = new Set();
+
+  function closeDropdowns(except = null) {
+    for (const details of dropdownDetails) {
+      if (details !== except) {
+        details.open = false;
+      }
+    }
+  }
 
   for (const tool of TOOL_OPTIONS) {
+    if (tool.id === "move") {
+      const moveDetails = document.createElement("details");
+      moveDetails.className = "tool-details tool-button-dropdown";
+      const moveSummary = document.createElement("summary");
+      moveSummary.className = "tool-button tool-button-summary";
+      moveSummary.title = tool.label;
+      moveSummary.dataset.tool = tool.id;
+      moveSummary.dataset.cursor = tool.cursor;
+      const moveText = document.createElement("span");
+      moveText.textContent = tool.label;
+      const moveArrow = document.createElement("span");
+      moveArrow.className = "tool-button-arrow";
+      moveArrow.textContent = "▾";
+      moveSummary.append(moveText, moveArrow);
+      const moveMenu = document.createElement("div");
+      moveMenu.className = "tool-menu";
+      const moveSelectLabel = document.createElement("label");
+      moveSelectLabel.className = "tool-switch";
+      const moveSelectInput = document.createElement("input");
+      moveSelectInput.type = "checkbox";
+      moveSelectInput.dataset.moveSelect = "true";
+      const moveSelectText = document.createElement("span");
+      moveSelectText.textContent = "Select points";
+      moveSelectLabel.append(moveSelectInput, moveSelectText);
+      moveMenu.append(moveSelectLabel);
+      moveDetails.append(moveSummary, moveMenu);
+      dropdownDetails.add(moveDetails);
+      buttons.set(tool.id, moveSummary);
+      moveSummary.addEventListener("click", () => {
+        closeDropdowns(moveDetails);
+        controller.setTool(tool.id);
+      });
+      moveSelectInput.addEventListener("change", () => {
+        controller.setTool("move");
+        controller.setMoveSelect(moveSelectInput.checked);
+      });
+      left.appendChild(moveDetails);
+      continue;
+    }
+
     const button = document.createElement("button");
     button.type = "button";
     button.className = "tool-button";
@@ -184,21 +241,25 @@ export function createToolsBar(controller) {
     button.title = tool.label;
     button.dataset.tool = tool.id;
     button.dataset.cursor = tool.cursor;
-    button.addEventListener("click", () => controller.setTool(tool.id));
+    button.addEventListener("click", () => {
+      closeDropdowns();
+      controller.setTool(tool.id);
+    });
     buttons.set(tool.id, button);
     left.appendChild(button);
   }
 
   const tooltipField = document.createElement("div");
-  tooltipField.className = "tool-field";
-  const tooltipLabel = document.createElement("label");
-  tooltipLabel.textContent = "Tooltips";
+  tooltipField.className = "tool-switch tool-switch-menu";
   const tooltipToggle = document.createElement("input");
   tooltipToggle.type = "checkbox";
   tooltipToggle.title = "Enable or disable tooltips";
+  const tooltipLabel = document.createElement("span");
+  tooltipLabel.textContent = "Tooltips";
   const tooltipDetails = document.createElement("details");
   tooltipDetails.className = "tool-details";
   const tooltipSummary = document.createElement("summary");
+  tooltipSummary.className = "tool-menu-button";
   tooltipSummary.textContent = "▾";
   const tooltipMenu = document.createElement("div");
   tooltipMenu.className = "tool-menu";
@@ -218,6 +279,10 @@ export function createToolsBar(controller) {
   pinnedTooltipLabel.append(pinnedTooltipInput, pinnedTooltipText);
   tooltipMenu.append(cursorTooltipLabel, pinnedTooltipLabel);
   tooltipDetails.append(tooltipSummary, tooltipMenu);
+  dropdownDetails.add(tooltipDetails);
+  tooltipSummary.addEventListener("click", () => {
+    closeDropdowns(tooltipDetails);
+  });
   tooltipToggle.addEventListener("change", () => {
     const enabled = tooltipToggle.checked;
     if (!enabled) {
@@ -241,7 +306,7 @@ export function createToolsBar(controller) {
       pinned: pinnedTooltipInput.checked
     });
   });
-  tooltipField.append(tooltipLabel, tooltipToggle, tooltipDetails);
+  tooltipField.append(tooltipToggle, tooltipLabel, tooltipDetails);
 
   const linkingField = document.createElement("label");
   linkingField.className = "tool-switch";
@@ -255,6 +320,12 @@ export function createToolsBar(controller) {
   right.append(tooltipField, linkingField);
   root.append(title, left, right);
 
+  document.addEventListener("click", (event) => {
+    if (!root.contains(event.target)) {
+      closeDropdowns();
+    }
+  });
+
   const updateActive = () => {
     for (const [toolId, button] of buttons.entries()) {
       button.dataset.active = String(controller.getTool() === toolId);
@@ -263,12 +334,19 @@ export function createToolsBar(controller) {
     tooltipToggle.checked = tooltipTargets.cursor || tooltipTargets.pinned;
     cursorTooltipInput.checked = tooltipTargets.cursor;
     pinnedTooltipInput.checked = tooltipTargets.pinned;
+    const moveSelectInput = root.querySelector("[data-move-select]");
+    if (moveSelectInput) {
+      moveSelectInput.checked = controller.isMoveSelectEnabled();
+    }
     linkingInput.checked = controller.isLinkingEnabled();
   };
 
   updateActive();
   controller.subscribe((event) => {
-    if (event.type === "tool" || event.type === "tooltipMode" || event.type === "linking") {
+    if (event.type === "tool" || event.type === "moveSelect" || event.type === "tooltipMode" || event.type === "linking") {
+      if (event.type === "tool" && event.tool !== "move") {
+        closeDropdowns();
+      }
       updateActive();
     }
   });

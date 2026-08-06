@@ -121,7 +121,11 @@ export function zoomablePlot({
   function setCursor() {
     const tool = getTool();
     if (tool === "move") {
-      canvas.style.cursor = isDragging ? "grabbing" : "pointer";
+      if (controller?.isMoveSelectEnabled?.()) {
+        canvas.style.cursor = "default";
+        return;
+      }
+      canvas.style.cursor = isDragging ? "grabbing" : "grab";
       return;
     }
 
@@ -234,7 +238,7 @@ export function zoomablePlot({
       }
 
       context.fillStyle = point.color;
-      context.fillRect(cx - 1.5, cy - 1.5, 4.5, 4.5);
+      context.fillRect(cx - 1.5, cy - 1.5, 5.5, 5.5);
       const renderedPoint = { ...point, cx, cy };
       renderedPoints.push(renderedPoint);
       currentRenderedPointsById.set(point.id, renderedPoint);
@@ -637,7 +641,8 @@ export function zoomablePlot({
     }
 
     const tool = getTool();
-    if (tool !== "select") {
+    const moveSelectEnabled = tool === "move" && (controller?.isMoveSelectEnabled?.() ?? false);
+    if (tool !== "select" && !moveSelectEnabled) {
       return;
     }
 
@@ -741,7 +746,7 @@ export function zoomablePlot({
 
   if (controller?.subscribe) {
     controller.subscribe((event) => {
-      if (event.type === "tool") {
+      if (event.type === "tool" || event.type === "moveSelect") {
         setCursor();
         hideTooltip(hoverTooltip);
       }

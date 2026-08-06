@@ -1,4 +1,5 @@
 import { zoomablePlot } from "./zoomablePlot.js";
+import { createContentBox } from "./contentbox.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -32,8 +33,15 @@ function createLegend() {
   return legend;
 }
 
-export function createScatterplotMatrix(data, controller) {
-  const sortedData = [...data].sort((a, b) => drawOrder[a.Label] - drawOrder[b.Label]);
+export function createScatterplotMatrix(data, controller, contentController = null) {
+  const getLabelOrder = (label) => (label in drawOrder ? drawOrder[label] : Number.POSITIVE_INFINITY);
+  const sortedData = [...data].sort((a, b) => {
+    const orderDelta = getLabelOrder(a.Label) - getLabelOrder(b.Label);
+    if (orderDelta !== 0) {
+      return orderDelta;
+    }
+    return String(a.Label ?? "").localeCompare(String(b.Label ?? ""));
+  });
   const variables = [
     { key: "OEW (1000 lbm)" },
     { key: "Block Fuel (1000 lbm)" },
@@ -45,6 +53,12 @@ export function createScatterplotMatrix(data, controller) {
 
   const container = document.createElement("div");
   container.className = "splom-container";
+
+  const layout = document.createElement("div");
+  layout.className = "splom-layout";
+
+  const main = document.createElement("div");
+  main.className = "splom-main";
 
   const header = document.createElement("div");
   header.className = "splom-header";
@@ -61,6 +75,12 @@ export function createScatterplotMatrix(data, controller) {
   grid.style.setProperty("--splom-columns", n - 1);
   grid.style.setProperty("--splom-cell-size", `${cellSize}px`);
 
+  const plots = [];
+
+  function getVisibleData() {
+    return contentController ? contentController.getFilteredData(sortedData) : sortedData;
+  }
+
   for (let row = 1; row < n; row++) {
     for (let col = 0; col < n - 1; col++) {
       if (col > row - 1) {
@@ -74,7 +94,7 @@ export function createScatterplotMatrix(data, controller) {
       const xVar = variables[col];
       const yVar = variables[row];
       const plot = zoomablePlot({
-        data: sortedData,
+        data: getVisibleData(),
         xKey: xVar.key,
         yKey: yVar.key,
         xDomain: d3Extent(sortedData, xVar.key),
@@ -92,11 +112,28 @@ export function createScatterplotMatrix(data, controller) {
         plotId: `r${row}c${col}`
       });
       plot.classList.add("splom-cell");
+      plots.push(plot);
       grid.appendChild(plot);
     }
   }
 
-  container.append(header, grid, createLegend());
+  main.append(header, grid, createLegend());
+  layout.append(main);
+
+  if (contentController) {
+    layout.appendChild(createContentBox(contentController));
+    contentController.subscribe((event) => {
+      if (event.type !== "labels") {
+        return;
+      }
+      const filteredData = getVisibleData();
+      for (const plot of plots) {
+        plot.setData?.(filteredData);
+      }
+    });
+  }
+
+  container.append(layout);
   return container;
 }
 

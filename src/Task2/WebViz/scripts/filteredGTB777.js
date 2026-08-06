@@ -7,7 +7,8 @@ const SELECT_COLUMNS = [
 
 export async function loadGTB777Data(csvUrl) {
   const data = await d3.csv(csvUrl, d3.autoType);
-  const filteredData = data.map((d) => ({
+  const filteredData = data.map((d, index) => ({
+    __rowId: index,
     Label: d.Label ?? "",
     "OEW (1000 lbm)": d["OEW (1000 lbm)"],
     "Block Fuel (1000 lbm)": d["Block Fuel (1000 lbm)"],

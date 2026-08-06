@@ -64,25 +64,30 @@ export function zoomablePlot({
   const canvasContext = canvas.getContext("2d");
   const plotSelection = d3.select(canvas);
 
-  const groupedPoints = colorDomain
-    ? colorDomain.map((label) => ({
-        color: fill(label),
-        rows: data.filter((d) => d.Label === label)
-      }))
-    : [{ color: "steelblue", rows: data }];
+  let pointData = [];
 
-  const pointData = [];
-  for (const group of groupedPoints) {
-    for (const row of group.rows) {
-      pointData.push({
-        id: `point-${pointData.length}`,
-        color: group.color,
-        label: row.Label ?? "",
-        x: row[xKey],
-        y: row[yKey],
-        title: `${row.Label ?? ""}\n${xKey}: ${row[xKey]}\n${yKey}: ${row[yKey]}`
-      });
+  function rebuildPointData(nextData) {
+    const groupedPoints = colorDomain
+      ? colorDomain.map((label) => ({
+          color: fill(label),
+          rows: nextData.filter((d) => d.Label === label)
+        }))
+      : [{ color: "steelblue", rows: nextData }];
+
+    const nextPointData = [];
+    for (const group of groupedPoints) {
+      for (const row of group.rows) {
+        nextPointData.push({
+          id: row.__rowId != null ? `point-${row.__rowId}` : `point-${nextPointData.length}`,
+          color: group.color,
+          label: row.Label ?? "",
+          x: row[xKey],
+          y: row[yKey],
+          title: `${row.Label ?? ""}\n${xKey}: ${row[xKey]}\n${yKey}: ${row[yKey]}`
+        });
+      }
     }
+    pointData = nextPointData;
   }
 
   let currentXDomain = [...xDomain];
@@ -782,8 +787,15 @@ export function zoomablePlot({
     });
   }
 
+  rebuildPointData(data);
   setCursor();
   container.append(canvas, selectionOverlay, pinnedTooltipLayer, hoverTooltip);
   render();
+  container.setData = (nextData) => {
+    rebuildPointData(nextData);
+    hideTooltip(hoverTooltip);
+    hideAllPinnedTooltips();
+    scheduleRender();
+  };
   return container;
 }

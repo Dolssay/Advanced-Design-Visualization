@@ -1,0 +1,62 @@
+.zoomable-plot {
+  position: relative;
+  width: var(--plot-width);
+  height: var(--plot-height);
+  overflow: hidden;
+}
+
+.zoomable-plot-canvas {
+  width: var(--plot-width);
+  height: var(--plot-height);
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+
+.plot-selection-overlay {
+  position: absolute;
+  border: 1px dashed #4a90e2;
+  background: rgba(74, 144, 226, 0.12);
+  pointer-events: none;
+  z-index: 2;
+  box-sizing: border-box;
+}
+
+.plot-tooltip-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.plot-tooltip {
+  position: absolute;
+  pointer-events: none;
+  display: block;
+  visibility: visible;
+  color: #fff;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.35;
+  white-space: pre-line;
+  z-index: 4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+}
+
+.plot-tooltip-hover {
+  background: rgba(36, 36, 36, 0.92);
+}
+
+.plot-tooltip-pinned {
+  background: rgba(20, 20, 20, 0.95);
+}
+
+.is-hidden {
+  display: none;
+  visibility: hidden;
+}
+
+.is-measuring {
+  visibility: hidden;
+}

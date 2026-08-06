@@ -4,12 +4,14 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 
 ## Files
 
-- `index.html` — page shell for the scatterplot matrix viewer
-- `main.js` — entrypoint that loads the CSV and attaches the plot
-- `filteredGTB777.js` — CSV loader and data filter
-- `splomGTB777.js` — scatterplot matrix builder
-- `zoomablePlot.js` — zoom/pan scatterplot cell renderer
-- `README.md` — this file
+- `index.html` - page shell for the scatterplot matrix viewer
+- `main.js` - entrypoint that loads the CSV and attaches the plot
+- `scripts/filteredGTB777.js` - CSV loader and data filter
+- `scripts/splomGTB777.js` - scatterplot matrix builder
+- `scripts/tools.js` - shared toolbar and plot interaction controller
+- `scripts/zoomablePlot.js` - zoom/pan scatterplot cell renderer
+- `stylings/` - CSS files for the page, toolbar, matrix, and plot cells
+- `README.md` - this file
 
 ## Setup
 
@@ -36,7 +38,7 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 
 ## Notes
 
-- The page uses ES module imports and fetches `../data/GTB777.csv`.
+- The page uses ES module imports and fetches `../../../data/GTB777.csv`.
 - Serving via `http://localhost:8000` avoids browser restrictions on local module imports and CSV loading.
 - If you change the data file, refresh the page to reload the updated dataset.
 

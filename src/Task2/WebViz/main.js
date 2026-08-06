@@ -1,6 +1,6 @@
-import { loadGTB777Data } from "./filteredGTB777.js";
-import { createScatterplotMatrix } from "./splomGTB777.js";
-import { createToolController, createToolsBar } from "./tools.js";
+import { loadGTB777Data } from "./scripts/filteredGTB777.js";
+import { createScatterplotMatrix } from "./scripts/splomGTB777.js";
+import { createToolController, createToolsBar } from "./scripts/tools.js";
 
 const app = document.getElementById("app");
 const controller = createToolController();
@@ -9,10 +9,7 @@ async function init() {
   try {
     const data = await loadGTB777Data("../../../data/GTB777.csv");
     const shell = document.createElement("div");
-    shell.style.display = "flex";
-    shell.style.flexDirection = "column";
-    shell.style.gap = "14px";
-    shell.style.width = "100%";
+    shell.className = "webviz-shell";
 
     shell.append(createToolsBar(controller), createScatterplotMatrix(data, controller));
     app.appendChild(shell);

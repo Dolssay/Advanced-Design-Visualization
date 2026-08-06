@@ -11,28 +11,19 @@ const colorRange = ["#b0b0b0", "#d62728", "#000000", "#4a90e2"];
 
 function createLegend() {
   const legend = document.createElement("div");
-  legend.style.display = "flex";
-  legend.style.gap = "12px";
-  legend.style.flexWrap = "wrap";
-  legend.style.justifyContent = "center";
+  legend.className = "splom-legend";
 
   colorDomain.forEach((label, index) => {
     const item = document.createElement("div");
-    item.style.display = "flex";
-    item.style.alignItems = "center";
-    item.style.gap = "6px";
+    item.className = "splom-legend-item";
 
     const swatch = document.createElement("span");
-    swatch.style.width = "14px";
-    swatch.style.height = "14px";
-    swatch.style.backgroundColor = colorRange[index];
-    swatch.style.border = "1px solid #999";
-    swatch.style.display = "inline-block";
+    swatch.className = "splom-legend-swatch";
+    swatch.style.setProperty("--legend-color", colorRange[index]);
 
     const labelNode = document.createElement("span");
+    labelNode.className = "splom-legend-label";
     labelNode.textContent = label;
-    labelNode.style.fontSize = "13px";
-    labelNode.style.color = "#222";
 
     item.append(swatch, labelNode);
     legend.appendChild(item);
@@ -53,27 +44,30 @@ export function createScatterplotMatrix(data, controller) {
   const n = variables.length;
 
   const container = document.createElement("div");
-  container.style.display = "flex";
-  container.style.flexDirection = "column";
-  container.style.alignItems = "center";
-  container.style.gap = "16px";
+  container.className = "splom-container";
 
   const header = document.createElement("div");
-  header.style.textAlign = "center";
-  header.innerHTML = `<div style="font-family:'Times New Roman', serif; font-size:20px; font-weight:700; margin-bottom:6px;">GTB777 Scatterplot Matrix</div>
-    <div style="font-family:Arial, sans-serif; font-size:13px; color:#666;">Use the Tools bar to move, select, zoom, brush, or lasso. Double-click resets the plot.</div>`;
+  header.className = "splom-header";
+  const title = document.createElement("div");
+  title.className = "splom-title";
+  title.textContent = "GTB777 Scatterplot Matrix";
+  const subtitle = document.createElement("div");
+  subtitle.className = "splom-subtitle";
+  subtitle.textContent = "Use the Tools bar to move, select, zoom, brush, or lasso. Double-click resets the plot.";
+  header.append(title, subtitle);
 
   const grid = document.createElement("div");
-  grid.style.display = "grid";
-  grid.style.gridTemplateColumns = `repeat(${n - 1}, ${cellSize}px)`;
-  grid.style.gap = "4px";
+  grid.className = "splom-grid";
+  grid.style.setProperty("--splom-columns", n - 1);
+  grid.style.setProperty("--splom-cell-size", `${cellSize}px`);
 
   for (let row = 1; row < n; row++) {
     for (let col = 0; col < n - 1; col++) {
       if (col > row - 1) {
         const blank = document.createElement("div");
-        blank.style.width = `${cellSize}px`;
-        blank.style.height = `${cellSize}px`;
+        blank.className = "splom-cell splom-cell-blank";
+        blank.style.setProperty("--plot-width", `${cellSize}px`);
+        blank.style.setProperty("--plot-height", `${cellSize}px`);
         grid.appendChild(blank);
         continue;
       }
@@ -97,7 +91,7 @@ export function createScatterplotMatrix(data, controller) {
         controller,
         plotId: `r${row}c${col}`
       });
-      plot.style.border = "1px solid #ccc";
+      plot.classList.add("splom-cell");
       grid.appendChild(plot);
     }
   }

@@ -32,61 +32,35 @@ export function zoomablePlot({
     : () => "steelblue";
 
   const container = document.createElement("div");
-  container.style.position = "relative";
-  container.style.width = `${width}px`;
-  container.style.height = `${height}px`;
-  container.style.overflow = "hidden";
+  container.className = "zoomable-plot";
+  container.style.setProperty("--plot-width", `${width}px`);
+  container.style.setProperty("--plot-height", `${height}px`);
 
   const canvas = document.createElement("canvas");
   const pixelRatio = window.devicePixelRatio || 1;
   canvas.width = Math.round(width * pixelRatio);
   canvas.height = Math.round(height * pixelRatio);
-  canvas.style.width = `${width}px`;
-  canvas.style.height = `${height}px`;
-  canvas.style.position = "absolute";
-  canvas.style.inset = "0";
-  canvas.style.display = "block";
+  canvas.className = "zoomable-plot-canvas";
 
   const selectionOverlay = controller?.createSelectionOverlay
     ? controller.createSelectionOverlay(container)
     : (() => {
         const overlay = document.createElement("div");
-        overlay.style.position = "absolute";
-        overlay.style.display = "none";
-        overlay.style.border = "1px dashed #4a90e2";
-        overlay.style.background = "rgba(74, 144, 226, 0.12)";
-        overlay.style.pointerEvents = "none";
-        overlay.style.zIndex = "2";
-        overlay.style.boxSizing = "border-box";
+        overlay.className = "plot-selection-overlay is-hidden";
         container.appendChild(overlay);
         return overlay;
       })();
 
   const pinnedTooltipLayer = document.createElement("div");
-  pinnedTooltipLayer.style.position = "absolute";
-  pinnedTooltipLayer.style.inset = "0";
-  pinnedTooltipLayer.style.pointerEvents = "none";
-  pinnedTooltipLayer.style.zIndex = "3";
+  pinnedTooltipLayer.className = "plot-tooltip-layer";
 
-  function createTooltip(backgroundColor) {
+  function createTooltip(variant) {
     const node = document.createElement("div");
-    node.style.position = "absolute";
-    node.style.pointerEvents = "none";
-    node.style.display = "none";
-    node.style.visibility = "hidden";
-    node.style.background = backgroundColor;
-    node.style.color = "#fff";
-    node.style.padding = "6px 8px";
-    node.style.borderRadius = "4px";
-    node.style.fontSize = "12px";
-    node.style.lineHeight = "1.35";
-    node.style.whiteSpace = "pre-line";
-    node.style.zIndex = "4";
-    node.style.boxShadow = "0 2px 8px rgba(0, 0, 0, 0.18)";
+    node.className = `plot-tooltip plot-tooltip-${variant} is-hidden`;
     return node;
   }
 
-  const hoverTooltip = createTooltip("rgba(36, 36, 36, 0.92)");
+  const hoverTooltip = createTooltip("hover");
   const canvasContext = canvas.getContext("2d");
   const plotSelection = d3.select(canvas);
 
@@ -289,8 +263,8 @@ export function zoomablePlot({
   }
 
   function hideTooltip(node) {
-    node.style.display = "none";
-    node.style.visibility = "hidden";
+    node.classList.add("is-hidden");
+    node.classList.remove("is-measuring");
   }
 
   function getTooltipBox(node) {
@@ -310,15 +284,15 @@ export function zoomablePlot({
 
   function positionTooltip(node, point, mouseX, mouseY, avoidNodes = []) {
     node.textContent = point.title;
-    node.style.display = "block";
-    node.style.visibility = "hidden";
+    node.classList.remove("is-hidden");
+    node.classList.add("is-measuring");
 
     const offset = 12;
     const padding = 8;
     const tooltipWidth = node.offsetWidth;
     const tooltipHeight = node.offsetHeight;
     const avoidBoxes = avoidNodes
-      .filter((avoidNode) => avoidNode && avoidNode.style.display !== "none")
+      .filter((avoidNode) => avoidNode && !avoidNode.classList.contains("is-hidden"))
       .map(getTooltipBox);
     const candidates = [
       { left: mouseX + offset, top: mouseY + offset },
@@ -346,7 +320,7 @@ export function zoomablePlot({
 
     node.style.left = `${chosen.left}px`;
     node.style.top = `${chosen.top}px`;
-    node.style.visibility = "visible";
+    node.classList.remove("is-measuring");
   }
 
   function hideAllPinnedTooltips() {
@@ -396,7 +370,7 @@ export function zoomablePlot({
 
       let pinnedNode = pinnedTooltipNodes.get(pinnedPointId);
       if (!pinnedNode) {
-        pinnedNode = createTooltip("rgba(20, 20, 20, 0.95)");
+        pinnedNode = createTooltip("pinned");
         pinnedTooltipLayer.appendChild(pinnedNode);
       }
 
@@ -532,7 +506,7 @@ export function zoomablePlot({
   }
 
   function showSelectionOverlay(rect) {
-    selectionOverlay.style.display = "block";
+    selectionOverlay.classList.remove("is-hidden");
     selectionOverlay.style.left = `${rect.left}px`;
     selectionOverlay.style.top = `${rect.top}px`;
     selectionOverlay.style.width = `${rect.right - rect.left}px`;
@@ -540,7 +514,7 @@ export function zoomablePlot({
   }
 
   function hideSelectionOverlay() {
-    selectionOverlay.style.display = "none";
+    selectionOverlay.classList.add("is-hidden");
   }
 
   function getPointsInRect(rect) {

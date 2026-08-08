@@ -46,7 +46,7 @@ df = df.round(4)
 df.to_csv("./output/lhs_uav_samples.csv", index=False)
 
 # Load baseline config
-with open('./Archer_Midnight.json', 'r') as f:
+with open('./data/Archer_Midnight.json', 'r') as f:
     baseline_config = json.load(f)
 
 results = []
@@ -77,7 +77,7 @@ for idx, row in df.iterrows():
     config['mission']['cruise_s'] = float(row['Cruise Speed (m/s)'])
     config['mission']['reserve_cruise_s'] = float(row['Reserve Cruise Speed (m/s)'])
     
-    temp_config_path = './Archer_Midnight_temp.json'
+    temp_config_path = './data/Archer_Midnight_temp.json'
     with open(temp_config_path, 'w') as f:
         json.dump(config, f, indent=2)
     

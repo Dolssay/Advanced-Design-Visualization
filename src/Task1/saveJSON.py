@@ -29,7 +29,7 @@ input_columns = {
 }
 
 # Load baseline config
-with open('./Archer_Midnight.json', 'r') as f:
+with open('./data/Archer_Midnight.json', 'r') as f:
     baseline_config = json.load(f)
 
 results = []

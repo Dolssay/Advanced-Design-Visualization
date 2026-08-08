@@ -1,1 +1,0 @@
-This readme outlines the structure and content of the csv file used as input for the GLEE program. The input contains the relationship between the input parameters and the output results, alongside the corresponding graph representation.

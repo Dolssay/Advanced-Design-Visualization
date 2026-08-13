@@ -261,9 +261,7 @@ export function createToolsBar(controller) {
   tooltipSummary.className = "tool-menu-button";
   const tooltipSummaryText = document.createElement("span");
   tooltipSummaryText.textContent = "Tooltips";
-  const tooltipArrow = document.createElement("span");
-  tooltipArrow.textContent = "▾";
-  tooltipSummary.append(tooltipSummaryText, tooltipArrow);
+  tooltipSummary.append(tooltipSummaryText);
   const tooltipMenu = document.createElement("div");
   tooltipMenu.className = "tool-menu";
   const cursorTooltipLabel = document.createElement("label");

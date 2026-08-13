@@ -77,6 +77,15 @@
 .tool-menu-button {
   font-size: 14px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tool-menu-button::after {
+  content: "▾";
+  font-size: 14px;
+  color: #1f2937;
 }
 
 .tool-field {

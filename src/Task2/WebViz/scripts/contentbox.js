@@ -93,13 +93,11 @@ export function createContentBox(controller) {
 
   const filterSummary = document.createElement("summary");
   filterSummary.className = "contentbox-section-summary";
-  const arrow = document.createElement("span");
-  arrow.textContent = "▾";
   const summaryText = document.createElement("span");
   summaryText.textContent = "Filter";
   const summaryCount = document.createElement("span");
   summaryCount.className = "contentbox-summary-count";
-  filterSummary.append(summaryText, summaryCount, arrow);
+  filterSummary.append(summaryText, summaryCount);
 
   const filterMenu = document.createElement("div");
   filterMenu.className = "contentbox-menu";

@@ -12,7 +12,8 @@ export function createToolController() {
     moveSelect: true,
     tooltipCursor: true,
     tooltipPinned: true,
-    linking: false
+    linking: false,
+    highlightedPointId: null
   };
 
   const listeners = new Set();
@@ -102,6 +103,19 @@ export function createToolController() {
       state.linking = linking;
       emit({ type: "linking", linking });
     },
+    setHighlightedPointId(pointId) {
+      if (state.highlightedPointId === pointId) return;
+      state.highlightedPointId = pointId ?? null;
+      emit({ type: "highlightedPoint", pointId: state.highlightedPointId });
+    },
+    clearHighlightedPointId() {
+      if (state.highlightedPointId === null) return;
+      state.highlightedPointId = null;
+      emit({ type: "highlightedPoint", pointId: null });
+    },
+    getHighlightedPointId() {
+      return state.highlightedPointId;
+    },
     togglePin(plotId, pointId, append = false) {
       const pins = getTargetPins(plotId);
       if (!append) {
@@ -141,7 +155,18 @@ export function createToolController() {
     clearAllPins() {
       globalPins.clear();
       localPinsByPlot.clear();
+      state.highlightedPointId = null;
       emit({ type: "pins" });
+      emit({ type: "highlightedPoint", pointId: null });
+    },
+    getAllPinnedIds() {
+      const pins = new Set(globalPins);
+      for (const localPins of localPinsByPlot.values()) {
+        for (const pinId of localPins) {
+          pins.add(pinId);
+        }
+      }
+      return pins;
     },
     getPinnedIds(plotId) {
       const pins = new Set(globalPins);

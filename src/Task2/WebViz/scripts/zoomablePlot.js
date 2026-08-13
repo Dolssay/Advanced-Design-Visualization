@@ -230,6 +230,8 @@ export function zoomablePlot({
   function drawPoints(context, xScale, yScale) {
     const renderedPoints = [];
     currentRenderedPointsById = new Map();
+    const highlightedPointId = controller?.getHighlightedPointId?.() ?? null;
+    let highlightedPoint = null;
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.globalAlpha = 0.78;
@@ -242,11 +244,17 @@ export function zoomablePlot({
         continue;
       }
 
+      const renderedPoint = { ...point, cx, cy };
+      currentRenderedPointsById.set(point.id, renderedPoint);
+
+      if (point.id === highlightedPointId) {
+        highlightedPoint = renderedPoint;
+        continue;
+      }
+
       context.fillStyle = point.color;
       context.fillRect(cx - 1.5, cy - 1.5, 5.5, 5.5);
-      const renderedPoint = { ...point, cx, cy };
       renderedPoints.push(renderedPoint);
-      currentRenderedPointsById.set(point.id, renderedPoint);
     }
 
     const pinnedIds = getPinnedIds();
@@ -261,6 +269,18 @@ export function zoomablePlot({
       context.lineWidth = 1.25;
       context.strokeRect(pinnedPoint.cx - 2.25, pinnedPoint.cy - 2.25, 4.5, 4.5);
       context.restore();
+    }
+
+    if (highlightedPoint) {
+      context.save();
+      context.globalAlpha = 1;
+      context.fillStyle = highlightedPoint.color;
+      context.fillRect(highlightedPoint.cx - 3, highlightedPoint.cy - 3, 8, 8);
+      context.strokeStyle = "#111827";
+      context.lineWidth = 1.5;
+      context.strokeRect(highlightedPoint.cx - 3, highlightedPoint.cy - 3, 8, 8);
+      context.restore();
+      renderedPoints.push(highlightedPoint);
     }
 
     context.restore();
@@ -775,6 +795,10 @@ export function zoomablePlot({
       }
 
       if (event.type === "pins" && (!event.plotId || event.plotId === plotId || controller.isLinkingEnabled?.())) {
+        scheduleRender();
+      }
+
+      if (event.type === "highlightedPoint") {
         scheduleRender();
       }
 

@@ -121,7 +121,7 @@ export function createScatterplotMatrix(data, controller, contentController = nu
   layout.append(main);
 
   if (contentController) {
-    layout.appendChild(createContentBox(contentController));
+    layout.appendChild(createContentBox(contentController, controller));
     contentController.subscribe((event) => {
       if (event.type !== "labels") {
         return;

@@ -51,15 +51,7 @@
   background: linear-gradient(180deg, #fafafa 0%, #f3f4f6 100%);
 }
 
-.contentbox-section-summary::after {
-  content: "v";
-  font-size: 12px;
-  color: #6b7280;
-}
 
-.contentbox-section[open] .contentbox-section-summary::after {
-  content: "^";
-}
 
 .contentbox-summary-count {
   font-size: 12px;

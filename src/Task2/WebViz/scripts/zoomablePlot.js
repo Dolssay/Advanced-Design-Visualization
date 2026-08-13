@@ -647,7 +647,7 @@ export function zoomablePlot({
 
     const tool = getTool();
     const moveSelectEnabled = tool === "move" && (controller?.isMoveSelectEnabled?.() ?? false);
-    if (tool !== "select" && !moveSelectEnabled) {
+    if (tool !== "select" && tool !== "brush" && !moveSelectEnabled) {
       return;
     }
 
@@ -660,9 +660,11 @@ export function zoomablePlot({
       return;
     }
 
-    controller?.togglePin?.(plotId, hoveredPoint.id, event.ctrlKey);
-    hideTooltip(hoverTooltip);
-    scheduleRender();
+    if (tool === "select" || moveSelectEnabled) {
+      controller?.togglePin?.(plotId, hoveredPoint.id, event.ctrlKey);
+      hideTooltip(hoverTooltip);
+      scheduleRender();
+    }
   }
 
   function handleDoubleClick(event) {

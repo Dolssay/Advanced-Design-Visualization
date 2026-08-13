@@ -9,7 +9,7 @@ const TOOL_OPTIONS = [
 export function createToolController() {
   const state = {
     tool: "move",
-    moveSelect: false,
+    moveSelect: true,
     tooltipCursor: true,
     tooltipPinned: true,
     linking: false

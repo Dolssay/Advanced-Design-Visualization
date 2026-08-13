@@ -255,12 +255,15 @@ export function createToolsBar(controller) {
   tooltipToggle.type = "checkbox";
   tooltipToggle.title = "Enable or disable tooltips";
   const tooltipLabel = document.createElement("span");
-  tooltipLabel.textContent = "Tooltips";
   const tooltipDetails = document.createElement("details");
   tooltipDetails.className = "tool-details";
   const tooltipSummary = document.createElement("summary");
   tooltipSummary.className = "tool-menu-button";
-  tooltipSummary.textContent = "▾";
+  const tooltipSummaryText = document.createElement("span");
+  tooltipSummaryText.textContent = "Tooltips";
+  const tooltipArrow = document.createElement("span");
+  tooltipArrow.textContent = "▾";
+  tooltipSummary.append(tooltipSummaryText, tooltipArrow);
   const tooltipMenu = document.createElement("div");
   tooltipMenu.className = "tool-menu";
   const cursorTooltipLabel = document.createElement("label");

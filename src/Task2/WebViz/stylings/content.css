@@ -139,7 +139,8 @@
 }
 
 .contentbox-button:hover {
-  background: #f5f5f5;
+  background: #eceff3;
+  border-color: #9ca3af;
 }
 
 .contentbox-button:active {
@@ -154,6 +155,7 @@
 
 .contentbox-button-primary:hover {
   background: #111827;
+  border-color: #111827;
 }
 
 .contentbox-button[data-active="true"],
@@ -238,18 +240,19 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 7px 14px 7px 14px;
   border: 0;
   background: transparent;
   color: #1f2937;
   font: inherit;
-  cursor: pointer;
+  cursor: default;
   text-align: left;
+  box-sizing: border-box;
 }
 
-.contentbox-highlight-summary:hover {
-  background: #f5f5f5;
+.contentbox-highlight-item:hover {
+  border-color: #c9ced6;
 }
 
 .contentbox-highlight-number {
@@ -264,20 +267,31 @@
   font-size: 13px;
   font-weight: 700;
   color: #111827;
+  min-width: 0;
 }
 
 .contentbox-highlight-toggle {
-  flex: 0 0 30px;
-  border: 0;
-  background: transparent;
+  flex: 0 0 34px;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: #fff;
   color: #6b7280;
   font-size: 18px;
   line-height: 1;
   cursor: pointer;
+  margin-left: 4px;
 }
 
 .contentbox-highlight-toggle:hover {
+  background: #eceff3;
+  border-color: #c9ced6;
   color: #111827;
+}
+
+.contentbox-highlight-toggle:active {
+  transform: translateY(1px);
 }
 
 .contentbox-highlight-body {

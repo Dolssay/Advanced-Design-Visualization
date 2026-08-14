@@ -254,6 +254,7 @@ export function createContentBox(contentController, plotController) {
   expandAllButton.className = "contentbox-button contentbox-button-icon";
   expandAllButton.textContent = "\u22EE";
   expandAllButton.title = "Expand or collapse all point details";
+  expandAllButton.setAttribute("aria-label", "Expand or collapse all point details");
 
   const clearPinsButton = document.createElement("button");
   clearPinsButton.type = "button";
@@ -328,6 +329,7 @@ export function createContentBox(contentController, plotController) {
       actions.className = "contentbox-highlight-toggle";
       actions.textContent = "\u22EE";
       actions.title = "Expand point details";
+      actions.setAttribute("aria-label", `Expand details for highlighted point ${point.index}`);
       actions.addEventListener("click", (event) => {
         event.preventDefault();
         event.stopPropagation();

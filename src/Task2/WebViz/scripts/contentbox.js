@@ -347,8 +347,26 @@ export function createContentBox(contentController, plotController) {
 
       const body = document.createElement("div");
       body.className = "contentbox-highlight-body";
-      body.textContent = contentController.getPointDetails(point.id);
       body.hidden = !(expandAllEnabled || expandedPointIds.has(point.id));
+
+      const details = document.createElement("div");
+      details.className = "contentbox-highlight-details";
+      details.textContent = contentController.getPointDetails(point.id);
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "contentbox-highlight-delete";
+      deleteButton.textContent = "X";
+      deleteButton.title = "Remove highlighted point";
+      deleteButton.setAttribute("aria-label", `Remove highlighted point ${point.index}`);
+      deleteButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        expandedPointIds.delete(point.id);
+        plotController?.removePin?.(point.id);
+      });
+
+      body.append(details, deleteButton);
 
       summary.append(number, label, pinButton, actions);
       item.append(summary, body);

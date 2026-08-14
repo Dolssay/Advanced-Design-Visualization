@@ -172,6 +172,22 @@ export function createToolController() {
         emit({ type: "pins", plotId });
       }
     },
+    removePin(pointId) {
+      if (!pointId) return;
+      let changed = globalPins.delete(pointId);
+      for (const pins of localPinsByPlot.values()) {
+        changed = pins.delete(pointId) || changed;
+      }
+      changed = state.pinnedHighlightedPointIds.delete(pointId) || changed;
+      if (state.highlightedPointId === pointId) {
+        state.highlightedPointId = null;
+        emit({ type: "highlightedPoint", pointId: null });
+      }
+      if (changed) {
+        emit({ type: "pins" });
+        emit({ type: "pinnedHighlight", pointId });
+      }
+    },
     clearAllPins() {
       globalPins.clear();
       localPinsByPlot.clear();

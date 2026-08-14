@@ -230,8 +230,8 @@ export function zoomablePlot({
   function drawPoints(context, xScale, yScale) {
     const renderedPoints = [];
     currentRenderedPointsById = new Map();
-    const highlightedPointId = controller?.getHighlightedPointId?.() ?? null;
-    let highlightedPoint = null;
+    const highlightedPointIds = controller?.getHighlightedPointIds?.() ?? new Set();
+    const highlightedPoints = [];
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.globalAlpha = 0.78;
@@ -247,8 +247,8 @@ export function zoomablePlot({
       const renderedPoint = { ...point, cx, cy };
       currentRenderedPointsById.set(point.id, renderedPoint);
 
-      if (point.id === highlightedPointId) {
-        highlightedPoint = renderedPoint;
+      if (highlightedPointIds.has(point.id)) {
+        highlightedPoints.push(renderedPoint);
         continue;
       }
 
@@ -271,7 +271,7 @@ export function zoomablePlot({
       context.restore();
     }
 
-    if (highlightedPoint) {
+    for (const highlightedPoint of highlightedPoints) {
       context.save();
       context.globalAlpha = 1;
       context.fillStyle = highlightedPoint.color;
@@ -798,7 +798,7 @@ export function zoomablePlot({
         scheduleRender();
       }
 
-      if (event.type === "highlightedPoint") {
+      if (event.type === "highlightedPoint" || event.type === "pinnedHighlight") {
         scheduleRender();
       }
 

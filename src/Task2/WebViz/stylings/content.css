@@ -240,8 +240,8 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 7px 14px 7px 14px;
+  gap: 8px;
+  padding: 7px 14px;
   border: 0;
   background: transparent;
   color: #1f2937;
@@ -270,28 +270,46 @@
   min-width: 0;
 }
 
+.contentbox-highlight-pin,
 .contentbox-highlight-toggle {
-  flex: 0 0 34px;
-  width: 34px;
+  flex: 0 0 auto;
   height: 34px;
   border: 1px solid transparent;
   border-radius: 9px;
   background: #fff;
   color: #6b7280;
-  font-size: 18px;
-  line-height: 1;
   cursor: pointer;
-  margin-left: 4px;
+  line-height: 1;
 }
 
+.contentbox-highlight-pin {
+  width: 42px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contentbox-highlight-toggle {
+  width: 34px;
+  font-size: 18px;
+}
+
+.contentbox-highlight-pin:hover,
 .contentbox-highlight-toggle:hover {
   background: #eceff3;
   border-color: #c9ced6;
   color: #111827;
 }
 
+.contentbox-highlight-pin:active,
 .contentbox-highlight-toggle:active {
   transform: translateY(1px);
+}
+
+.contentbox-highlight-pin[data-active="true"] {
+  background: #3f3f46;
+  border-color: #27272a;
+  color: #fff;
 }
 
 .contentbox-highlight-body {

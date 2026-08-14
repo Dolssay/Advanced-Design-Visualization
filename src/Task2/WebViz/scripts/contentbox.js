@@ -242,10 +242,6 @@ export function createContentBox(contentController, plotController) {
   highlightTitle.className = "contentbox-highlight-title";
   highlightTitle.textContent = "Manage Highlighted Points";
 
-  const highlightDescription = document.createElement("div");
-  highlightDescription.className = "contentbox-helper";
-  highlightDescription.textContent = "Manage Highlighted Points";
-
   const highlightActions = document.createElement("div");
   highlightActions.className = "contentbox-actions";
 
@@ -262,7 +258,7 @@ export function createContentBox(contentController, plotController) {
   clearPinsButton.textContent = "Refresh";
 
   highlightActions.append(expandAllButton, clearPinsButton);
-  highlightHeader.append(highlightTitle, highlightDescription, highlightActions);
+  highlightHeader.append(highlightTitle, highlightActions);
 
   const highlightList = document.createElement("div");
   highlightList.className = "contentbox-highlight-list";
@@ -324,6 +320,19 @@ export function createContentBox(contentController, plotController) {
       label.className = "contentbox-highlight-label";
       label.textContent = point.label || "(blank)";
 
+      const pinButton = document.createElement("button");
+      pinButton.type = "button";
+      pinButton.className = "contentbox-highlight-pin";
+      pinButton.textContent = "Pin";
+      pinButton.title = "Pin highlighted draw";
+      pinButton.dataset.active = String(plotController?.isPinnedHighlightedPoint?.(point.id) ?? false);
+      pinButton.setAttribute("aria-label", `Pin highlighted draw for point ${point.index}`);
+      pinButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        plotController?.togglePinnedHighlightedPoint?.(point.id);
+      });
+
       const actions = document.createElement("button");
       actions.type = "button";
       actions.className = "contentbox-highlight-toggle";
@@ -341,7 +350,7 @@ export function createContentBox(contentController, plotController) {
       body.textContent = contentController.getPointDetails(point.id);
       body.hidden = !(expandAllEnabled || expandedPointIds.has(point.id));
 
-      summary.append(number, label, actions);
+      summary.append(number, label, pinButton, actions);
       item.append(summary, body);
       highlightList.appendChild(item);
     }
@@ -377,7 +386,7 @@ export function createContentBox(contentController, plotController) {
   });
 
   plotController?.subscribe?.((event) => {
-    if (event.type === "pins") {
+    if (event.type === "pins" || event.type === "pinnedHighlight") {
       renderHighlights();
     }
   });

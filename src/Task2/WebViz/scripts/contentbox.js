@@ -347,7 +347,6 @@ export function createContentBox(contentController, plotController) {
 
       const body = document.createElement("div");
       body.className = "contentbox-highlight-body";
-      body.hidden = !(expandAllEnabled || expandedPointIds.has(point.id));
 
       const details = document.createElement("div");
       details.className = "contentbox-highlight-details";
@@ -367,6 +366,7 @@ export function createContentBox(contentController, plotController) {
       });
 
       body.append(details, deleteButton);
+      body.hidden = !(expandAllEnabled || expandedPointIds.has(point.id));
 
       summary.append(number, label, pinButton, actions);
       item.append(summary, body);

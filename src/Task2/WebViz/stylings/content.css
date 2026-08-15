@@ -322,6 +322,10 @@
   gap: 8px;
 }
 
+.contentbox-highlight-body[hidden] {
+  display: none !important;
+}
+
 .contentbox-highlight-details {
   white-space: pre-line;
 }

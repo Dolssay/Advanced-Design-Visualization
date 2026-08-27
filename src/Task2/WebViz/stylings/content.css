@@ -200,7 +200,7 @@
 .contentbox-highlight-header {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
@@ -208,6 +208,16 @@
   font-size: 16px;
   font-weight: 700;
   color: #1f2937;
+}
+
+.contentbox-highlight-drawn-counter {
+  color: #6b7280;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.contentbox-highlight-drawn-counter[hidden] {
+  display: none;
 }
 
 .contentbox-highlight-list {
@@ -312,11 +322,20 @@
   transform: translateY(1px);
 }
 
-.contentbox-highlight-draw[data-active="true"],
 .contentbox-highlight-pin[data-active="true"] {
   background: #3f3f46;
   border-color: #27272a;
   color: #fff;
+}
+
+.contentbox-highlight-draw[data-active="true"] {
+  background: var(--draw-color, #3f3f46);
+  border-color: var(--draw-color, #27272a);
+  color: #fff;
+}
+
+.contentbox-highlight-draw[data-active="true"]:hover {
+  filter: brightness(0.9);
 }
 
 .contentbox-highlight-draw:disabled {

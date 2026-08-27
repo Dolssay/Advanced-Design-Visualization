@@ -1,5 +1,9 @@
 const SKETCH_COLORS = ["#d62728", "#1f77b4", "#2ca02c", "#111827"];
 
+export function getGTB777SketchColor(index) {
+  return SKETCH_COLORS[index % SKETCH_COLORS.length];
+}
+
 const GEOMETRY_COLUMNS = [
   "ARHT",
   "TRHT",
@@ -234,7 +238,7 @@ export function createGTB777Sketch({
     drawAxes(svg, domains, scales);
 
     points.forEach((point, index) => {
-      drawTailDesign(svg, point, SKETCH_COLORS[index % SKETCH_COLORS.length], scales);
+      drawTailDesign(svg, point, getGTB777SketchColor(index), scales);
     });
 
     empty.hidden = points.length > 0;

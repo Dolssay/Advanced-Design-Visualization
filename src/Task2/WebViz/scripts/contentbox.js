@@ -1,3 +1,5 @@
+import { getGTB777SketchColor } from "./sketchGTB777.js";
+
 function parsePointId(pointId) {
   const match = /^point-(\d+)$/.exec(pointId ?? "");
   return match ? Number(match[1]) : null;
@@ -257,6 +259,9 @@ export function createContentBox(contentController, plotController) {
   highlightTitle.className = "contentbox-highlight-title";
   highlightTitle.textContent = "Manage Highlighted Points";
 
+  const drawnCounter = document.createElement("div");
+  drawnCounter.className = "contentbox-highlight-drawn-counter";
+
   const highlightActions = document.createElement("div");
   highlightActions.className = "contentbox-actions";
 
@@ -273,7 +278,7 @@ export function createContentBox(contentController, plotController) {
   clearPinsButton.textContent = "Refresh";
 
   highlightActions.append(expandAllButton, clearPinsButton);
-  highlightHeader.append(highlightTitle, highlightActions);
+  highlightHeader.append(highlightTitle, drawnCounter, highlightActions);
 
   const highlightList = document.createElement("div");
   highlightList.className = "contentbox-highlight-list";
@@ -310,8 +315,12 @@ export function createContentBox(contentController, plotController) {
   function renderHighlights() {
     const points = contentController.getPinnedPointSummaries(plotController);
     const drawnPointIds = plotController?.getDrawnPointIds?.() ?? new Set();
+    const drawnPoints = contentController.getDrawnPointSummaries(plotController);
+    const drawnPointIndexes = new Map(drawnPoints.map((point, index) => [point.id, index]));
     const maxDrawnPoints = contentController.getLabels().length;
     highlightList.replaceChildren();
+    drawnCounter.hidden = drawnPoints.length === 0;
+    drawnCounter.textContent = `${drawnPoints.length}/${maxDrawnPoints} Drawn Points`;
 
     if (!points.length) {
       highlightList.appendChild(highlightEmpty);
@@ -356,6 +365,11 @@ export function createContentBox(contentController, plotController) {
       drawButton.textContent = "Draw";
       drawButton.title = "Draw aircraft sketch";
       drawButton.dataset.active = String(plotController?.isDrawnPoint?.(point.id) ?? false);
+      if (drawnPointIndexes.has(point.id)) {
+        drawButton.style.setProperty("--draw-color", getGTB777SketchColor(drawnPointIndexes.get(point.id)));
+      } else {
+        drawButton.style.removeProperty("--draw-color");
+      }
       drawButton.disabled = !drawnPointIds.has(point.id) && drawnPointIds.size >= maxDrawnPoints;
       drawButton.setAttribute("aria-label", `Draw aircraft sketch for point ${point.index}`);
       drawButton.addEventListener("click", (event) => {

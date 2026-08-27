@@ -21,6 +21,7 @@ export function createToolController() {
   const listeners = new Set();
   const globalPins = new Set();
   const localPinsByPlot = new Map();
+  const drawnPointColorIndexes = new Map();
   const eventLog = [];
 
   function emit(event) {
@@ -71,10 +72,21 @@ export function createToolController() {
     for (const pointId of state.drawnPointIds) {
       if (!pins.has(pointId)) {
         state.drawnPointIds.delete(pointId);
+        drawnPointColorIndexes.delete(pointId);
         changed = true;
       }
     }
     return changed;
+  }
+
+  function getNextDrawColorIndex(maxDrawnPoints) {
+    const usedIndexes = new Set(drawnPointColorIndexes.values());
+    for (let index = 0; index < maxDrawnPoints; index++) {
+      if (!usedIndexes.has(index)) {
+        return index;
+      }
+    }
+    return null;
   }
 
   return {
@@ -177,22 +189,32 @@ export function createToolController() {
     getDrawnPointIds() {
       return new Set(state.drawnPointIds);
     },
+    getDrawnPointColorIndex(pointId) {
+      return drawnPointColorIndexes.get(pointId) ?? null;
+    },
     toggleDrawnPoint(pointId, maxDrawnPoints = Number.POSITIVE_INFINITY) {
       if (!pointId) return;
       if (state.drawnPointIds.has(pointId)) {
         state.drawnPointIds.delete(pointId);
+        drawnPointColorIndexes.delete(pointId);
         emit({ type: "drawPoints", pointId });
         return;
       }
       if (state.drawnPointIds.size >= maxDrawnPoints) {
         return;
       }
+      const colorIndex = getNextDrawColorIndex(maxDrawnPoints);
+      if (colorIndex == null) {
+        return;
+      }
       state.drawnPointIds.add(pointId);
+      drawnPointColorIndexes.set(pointId, colorIndex);
       emit({ type: "drawPoints", pointId });
     },
     clearDrawnPoints() {
       if (!state.drawnPointIds.size) return;
       state.drawnPointIds.clear();
+      drawnPointColorIndexes.clear();
       emit({ type: "drawPoints" });
     },
     togglePin(plotId, pointId, append = false) {
@@ -257,6 +279,7 @@ export function createToolController() {
       }
       changed = state.pinnedHighlightedPointIds.delete(pointId) || changed;
       changed = state.drawnPointIds.delete(pointId) || changed;
+      drawnPointColorIndexes.delete(pointId);
       if (state.highlightedPointId === pointId) {
         state.highlightedPointId = null;
         emit({ type: "highlightedPoint", pointId: null });
@@ -273,6 +296,7 @@ export function createToolController() {
       state.highlightedPointId = null;
       state.pinnedHighlightedPointIds.clear();
       state.drawnPointIds.clear();
+      drawnPointColorIndexes.clear();
       emit({ type: "pins" });
       emit({ type: "highlightedPoint", pointId: null });
       emit({ type: "pinnedHighlight" });

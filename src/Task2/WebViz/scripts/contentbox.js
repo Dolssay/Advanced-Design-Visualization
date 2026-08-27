@@ -123,6 +123,7 @@ export function createContentController(data) {
         .sort((a, b) => a.rowId - b.rowId)
         .map((point, index) => ({
           ...point,
+          drawColorIndex: plotController?.getDrawnPointColorIndex?.(point.id) ?? index,
           index: index + 1
         }));
     },
@@ -366,7 +367,7 @@ export function createContentBox(contentController, plotController) {
       drawButton.title = "Draw aircraft sketch";
       drawButton.dataset.active = String(plotController?.isDrawnPoint?.(point.id) ?? false);
       if (drawnPointIndexes.has(point.id)) {
-        drawButton.style.setProperty("--draw-color", getGTB777SketchColor(drawnPointIndexes.get(point.id)));
+        drawButton.style.setProperty("--draw-color", getGTB777SketchColor(plotController?.getDrawnPointColorIndex?.(point.id) ?? drawnPointIndexes.get(point.id)));
       } else {
         drawButton.style.removeProperty("--draw-color");
       }

@@ -238,7 +238,7 @@ export function createGTB777Sketch({
     drawAxes(svg, domains, scales);
 
     points.forEach((point, index) => {
-      drawTailDesign(svg, point, getGTB777SketchColor(index), scales);
+      drawTailDesign(svg, point, getGTB777SketchColor(point.drawColorIndex ?? index), scales);
     });
 
     empty.hidden = points.length > 0;

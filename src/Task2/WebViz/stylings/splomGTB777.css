@@ -48,6 +48,97 @@
   width: var(--plot-width);
   height: var(--plot-height);
   border-color: transparent;
+  position: relative;
+  overflow: hidden;
+  background: #fff;
+}
+
+.gtb777-sketch {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.gtb777-sketch-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.gtb777-sketch-axis,
+.gtb777-sketch-axis-tick {
+  fill: none;
+  stroke: #111827;
+  stroke-width: 1.4;
+}
+
+.gtb777-sketch-centerline {
+  fill: none;
+  stroke: #d1d5db;
+  stroke-width: 1;
+  stroke-dasharray: 5 5;
+}
+
+.gtb777-sketch-caption {
+  fill: #6b7280;
+  font: 12px Arial, sans-serif;
+}
+
+.gtb777-sketch-tick-label {
+  fill: #111827;
+  font: 12px Arial, sans-serif;
+}
+
+.gtb777-sketch-axis-label {
+  fill: #374151;
+  font: 12px Arial, sans-serif;
+}
+
+.gtb777-sketch-fuselage,
+.gtb777-sketch-wing,
+.gtb777-sketch-tail {
+  fill: none;
+  stroke: var(--sketch-color);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.gtb777-sketch-elevator {
+  fill: none;
+  stroke: var(--sketch-color);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  stroke-dasharray: 2.5 4;
+}
+
+.gtb777-sketch-aircraft-centerline {
+  fill: none;
+  stroke: var(--sketch-color);
+  stroke-width: 1;
+  stroke-dasharray: 6 4;
+  opacity: 0.65;
+}
+
+.gtb777-sketch-empty {
+  position: absolute;
+  left: 44px;
+  right: 44px;
+  bottom: 44px;
+  padding: 10px 12px;
+  border: 1px dashed #d1d5db;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+  pointer-events: none;
+}
+
+.gtb777-sketch-empty[hidden] {
+  display: none;
 }
 
 .splom-legend {

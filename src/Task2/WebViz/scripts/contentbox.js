@@ -65,6 +65,9 @@ export function createContentController(data) {
     getLabels() {
       return [...state.labels];
     },
+    getRows() {
+      return [...rowsById.values()];
+    },
     getSelectedLabels() {
       return new Set(state.selectedLabels);
     },
@@ -91,6 +94,7 @@ export function createContentController(data) {
         rowId: row.__rowId,
         label: row.Label ?? "",
         title: formatPointDetails(row),
+        row,
         index: index ?? row.__rowId + 1
       };
     },
@@ -100,6 +104,17 @@ export function createContentController(data) {
     },
     getPinnedPointSummaries(plotController) {
       const ids = Array.from(plotController?.getAllPinnedIds?.() ?? []);
+      return ids
+        .map((pointId) => this.getPointSummary(pointId))
+        .filter(Boolean)
+        .sort((a, b) => a.rowId - b.rowId)
+        .map((point, index) => ({
+          ...point,
+          index: index + 1
+        }));
+    },
+    getDrawnPointSummaries(plotController) {
+      const ids = Array.from(plotController?.getDrawnPointIds?.() ?? []);
       return ids
         .map((pointId) => this.getPointSummary(pointId))
         .filter(Boolean)
@@ -294,6 +309,8 @@ export function createContentBox(contentController, plotController) {
 
   function renderHighlights() {
     const points = contentController.getPinnedPointSummaries(plotController);
+    const drawnPointIds = plotController?.getDrawnPointIds?.() ?? new Set();
+    const maxDrawnPoints = contentController.getLabels().length;
     highlightList.replaceChildren();
 
     if (!points.length) {
@@ -333,6 +350,20 @@ export function createContentBox(contentController, plotController) {
         plotController?.togglePinnedHighlightedPoint?.(point.id);
       });
 
+      const drawButton = document.createElement("button");
+      drawButton.type = "button";
+      drawButton.className = "contentbox-highlight-draw";
+      drawButton.textContent = "Draw";
+      drawButton.title = "Draw aircraft sketch";
+      drawButton.dataset.active = String(plotController?.isDrawnPoint?.(point.id) ?? false);
+      drawButton.disabled = !drawnPointIds.has(point.id) && drawnPointIds.size >= maxDrawnPoints;
+      drawButton.setAttribute("aria-label", `Draw aircraft sketch for point ${point.index}`);
+      drawButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        plotController?.toggleDrawnPoint?.(point.id, maxDrawnPoints);
+      });
+
       const actions = document.createElement("button");
       actions.type = "button";
       actions.className = "contentbox-highlight-toggle";
@@ -368,7 +399,7 @@ export function createContentBox(contentController, plotController) {
       body.append(details, deleteButton);
       body.hidden = !(expandAllEnabled || expandedPointIds.has(point.id));
 
-      summary.append(number, label, pinButton, actions);
+      summary.append(number, label, drawButton, pinButton, actions);
       item.append(summary, body);
       highlightList.appendChild(item);
     }
@@ -404,7 +435,7 @@ export function createContentBox(contentController, plotController) {
   });
 
   plotController?.subscribe?.((event) => {
-    if (event.type === "pins" || event.type === "pinnedHighlight") {
+    if (event.type === "pins" || event.type === "pinnedHighlight" || event.type === "drawPoints") {
       renderHighlights();
     }
   });

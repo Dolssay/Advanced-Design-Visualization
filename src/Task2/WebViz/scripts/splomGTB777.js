@@ -1,5 +1,6 @@
 import { zoomablePlot } from "./zoomablePlot.js";
 import { createContentBox } from "./contentbox.js";
+import { createGTB777Sketch } from "./sketchGTB777.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -76,6 +77,7 @@ export function createScatterplotMatrix(data, controller, contentController = nu
   grid.style.setProperty("--splom-cell-size", `${cellSize}px`);
 
   const plots = [];
+  let sketchAdded = false;
 
   function getVisibleData() {
     return contentController ? contentController.getFilteredData(sortedData) : sortedData;
@@ -88,6 +90,15 @@ export function createScatterplotMatrix(data, controller, contentController = nu
         blank.className = "splom-cell splom-cell-blank";
         blank.style.setProperty("--plot-width", `${cellSize}px`);
         blank.style.setProperty("--plot-height", `${cellSize}px`);
+        if (!sketchAdded && contentController) {
+          blank.appendChild(createGTB777Sketch({
+            contentController,
+            plotController: controller,
+            width: cellSize,
+            height: cellSize
+          }));
+          sketchAdded = true;
+        }
         grid.appendChild(blank);
         continue;
       }

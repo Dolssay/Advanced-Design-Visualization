@@ -14,7 +14,8 @@ export function createToolController() {
     tooltipPinned: true,
     linking: false,
     highlightedPointId: null,
-    pinnedHighlightedPointIds: new Set()
+    pinnedHighlightedPointIds: new Set(),
+    drawnPointIds: new Set()
   };
 
   const listeners = new Set();
@@ -58,6 +59,18 @@ export function createToolController() {
     for (const pointId of state.pinnedHighlightedPointIds) {
       if (!pins.has(pointId)) {
         state.pinnedHighlightedPointIds.delete(pointId);
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
+  function pruneDrawnPoints() {
+    const pins = getAllPins();
+    let changed = false;
+    for (const pointId of state.drawnPointIds) {
+      if (!pins.has(pointId)) {
+        state.drawnPointIds.delete(pointId);
         changed = true;
       }
     }
@@ -158,6 +171,30 @@ export function createToolController() {
       }
       emit({ type: "pinnedHighlight", pointId });
     },
+    isDrawnPoint(pointId) {
+      return state.drawnPointIds.has(pointId);
+    },
+    getDrawnPointIds() {
+      return new Set(state.drawnPointIds);
+    },
+    toggleDrawnPoint(pointId, maxDrawnPoints = Number.POSITIVE_INFINITY) {
+      if (!pointId) return;
+      if (state.drawnPointIds.has(pointId)) {
+        state.drawnPointIds.delete(pointId);
+        emit({ type: "drawPoints", pointId });
+        return;
+      }
+      if (state.drawnPointIds.size >= maxDrawnPoints) {
+        return;
+      }
+      state.drawnPointIds.add(pointId);
+      emit({ type: "drawPoints", pointId });
+    },
+    clearDrawnPoints() {
+      if (!state.drawnPointIds.size) return;
+      state.drawnPointIds.clear();
+      emit({ type: "drawPoints" });
+    },
     togglePin(plotId, pointId, append = false) {
       const pins = getTargetPins(plotId);
       if (!append) {
@@ -166,6 +203,9 @@ export function createToolController() {
         emit({ type: "pins", plotId });
         if (prunePinnedHighlights()) {
           emit({ type: "pinnedHighlight", pointId });
+        }
+        if (pruneDrawnPoints()) {
+          emit({ type: "drawPoints", pointId });
         }
         return;
       }
@@ -178,6 +218,9 @@ export function createToolController() {
       emit({ type: "pins", plotId });
       if (prunePinnedHighlights()) {
         emit({ type: "pinnedHighlight", pointId });
+      }
+      if (pruneDrawnPoints()) {
+        emit({ type: "drawPoints", pointId });
       }
     },
     addPins(plotId, pointIds) {
@@ -201,6 +244,9 @@ export function createToolController() {
         if (prunePinnedHighlights()) {
           emit({ type: "pinnedHighlight" });
         }
+        if (pruneDrawnPoints()) {
+          emit({ type: "drawPoints" });
+        }
       }
     },
     removePin(pointId) {
@@ -210,6 +256,7 @@ export function createToolController() {
         changed = pins.delete(pointId) || changed;
       }
       changed = state.pinnedHighlightedPointIds.delete(pointId) || changed;
+      changed = state.drawnPointIds.delete(pointId) || changed;
       if (state.highlightedPointId === pointId) {
         state.highlightedPointId = null;
         emit({ type: "highlightedPoint", pointId: null });
@@ -217,6 +264,7 @@ export function createToolController() {
       if (changed) {
         emit({ type: "pins" });
         emit({ type: "pinnedHighlight", pointId });
+        emit({ type: "drawPoints", pointId });
       }
     },
     clearAllPins() {
@@ -224,9 +272,11 @@ export function createToolController() {
       localPinsByPlot.clear();
       state.highlightedPointId = null;
       state.pinnedHighlightedPointIds.clear();
+      state.drawnPointIds.clear();
       emit({ type: "pins" });
       emit({ type: "highlightedPoint", pointId: null });
       emit({ type: "pinnedHighlight" });
+      emit({ type: "drawPoints" });
     },
     getAllPinnedIds() {
       return getAllPins();

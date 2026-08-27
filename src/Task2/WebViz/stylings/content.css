@@ -329,13 +329,15 @@
 }
 
 .contentbox-highlight-draw[data-active="true"] {
-  background: var(--draw-color, #3f3f46);
+  background: #eef2ff;
+  background: color-mix(in srgb, var(--draw-color, #3f3f46) 16%, #ffffff);
   border-color: var(--draw-color, #27272a);
-  color: #fff;
+  color: #111827;
 }
 
 .contentbox-highlight-draw[data-active="true"]:hover {
-  filter: brightness(0.9);
+  background: #e0e7ff;
+  background: color-mix(in srgb, var(--draw-color, #3f3f46) 24%, #ffffff);
 }
 
 .contentbox-highlight-draw:disabled {

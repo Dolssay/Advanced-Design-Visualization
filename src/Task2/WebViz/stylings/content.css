@@ -214,8 +214,9 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 620px;
-  overflow: auto;
+  height: 430px;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding-right: 2px;
   overscroll-behavior: contain;
 }
@@ -230,6 +231,7 @@
 }
 
 .contentbox-highlight-item {
+  flex: 0 0 auto;
   border: 1px solid #e1e1e1;
   border-radius: 12px;
   background: #fff;
@@ -360,6 +362,6 @@
   }
 
   .contentbox-highlight-list {
-    max-height: 420px;
+    height: 420px;
   }
 }

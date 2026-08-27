@@ -148,7 +148,7 @@ function createScales(domains) {
       return plot.left + ((value - domains.x[0]) / (domains.x[1] - domains.x[0])) * (plot.right - plot.left);
     },
     y(value) {
-      return plot.bottom - ((value - domains.y[0]) / (domains.y[1] - domains.y[0])) * (plot.bottom - plot.top);
+      return plot.top + ((value - domains.y[0]) / (domains.y[1] - domains.y[0])) * (plot.bottom - plot.top);
     }
   };
 }

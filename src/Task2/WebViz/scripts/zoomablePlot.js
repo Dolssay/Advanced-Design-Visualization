@@ -110,6 +110,9 @@ export function zoomablePlot({
   }
 
   function areCursorTooltipsEnabled() {
+    if (getTool() === "brush") {
+      return false;
+    }
     const targets = controller?.getTooltipTargets?.();
     return !altHeld && (targets ? targets.cursor : true);
   }

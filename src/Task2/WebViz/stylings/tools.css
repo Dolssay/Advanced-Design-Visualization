@@ -133,6 +133,19 @@
   margin: 0;
 }
 
+.tool-switch[data-disabled="true"] {
+  opacity: 0.55;
+}
+
+.tool-switch[data-disabled="true"],
+.tool-switch[data-disabled="true"] summary {
+  cursor: not-allowed;
+}
+
+.tool-switch input:disabled {
+  cursor: not-allowed;
+}
+
 .tool-details {
   position: relative;
 }

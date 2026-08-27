@@ -89,6 +89,35 @@ export function createToolController() {
     return null;
   }
 
+  function areTooltipsForcedDisabled() {
+    return state.tool === "brush" || getAllPins().size > 60;
+  }
+
+  function getEffectiveTooltipTargets() {
+    if (areTooltipsForcedDisabled()) {
+      return {
+        cursor: false,
+        pinned: false
+      };
+    }
+
+    return {
+      cursor: state.tooltipCursor,
+      pinned: state.tooltipPinned
+    };
+  }
+
+  function emitTooltipMode() {
+    const targets = getEffectiveTooltipTargets();
+    emit({
+      type: "tooltipMode",
+      mode: targets.cursor || targets.pinned ? "on" : "off",
+      cursor: targets.cursor,
+      pinned: targets.pinned,
+      forced: areTooltipsForcedDisabled()
+    });
+  }
+
   return {
     state,
     subscribe(listener) {
@@ -99,16 +128,24 @@ export function createToolController() {
       return state.tool;
     },
     getTooltipMode() {
-      return state.tooltipCursor || state.tooltipPinned ? "on" : "off";
+      const targets = getEffectiveTooltipTargets();
+      return targets.cursor || targets.pinned ? "on" : "off";
     },
     isTooltipEnabled() {
-      return state.tooltipCursor || state.tooltipPinned;
+      const targets = getEffectiveTooltipTargets();
+      return targets.cursor || targets.pinned;
     },
     getTooltipTargets() {
+      return getEffectiveTooltipTargets();
+    },
+    getTooltipPreferences() {
       return {
         cursor: state.tooltipCursor,
         pinned: state.tooltipPinned
       };
+    },
+    areTooltipsForcedDisabled() {
+      return areTooltipsForcedDisabled();
     },
     isLinkingEnabled() {
       return state.linking;
@@ -120,6 +157,7 @@ export function createToolController() {
       if (state.tool === tool) return;
       state.tool = tool;
       emit({ type: "tool", tool });
+      emitTooltipMode();
     },
     setMoveSelect(moveSelect) {
       if (state.moveSelect === moveSelect) return;
@@ -127,24 +165,27 @@ export function createToolController() {
       emit({ type: "moveSelect", moveSelect });
     },
     setTooltipMode(mode) {
+      if (areTooltipsForcedDisabled()) {
+        emitTooltipMode();
+        return;
+      }
       const next = mode === "on";
       if (state.tooltipCursor === next && state.tooltipPinned === next) return;
       state.tooltipCursor = next;
       state.tooltipPinned = next;
-      emit({ type: "tooltipMode", mode: next ? "on" : "off" });
+      emitTooltipMode();
     },
     setTooltipTargets(targets) {
+      if (areTooltipsForcedDisabled()) {
+        emitTooltipMode();
+        return;
+      }
       const nextCursor = Boolean(targets?.cursor);
       const nextPinned = Boolean(targets?.pinned);
       if (state.tooltipCursor === nextCursor && state.tooltipPinned === nextPinned) return;
       state.tooltipCursor = nextCursor;
       state.tooltipPinned = nextPinned;
-      emit({
-        type: "tooltipMode",
-        mode: nextCursor || nextPinned ? "on" : "off",
-        cursor: nextCursor,
-        pinned: nextPinned
-      });
+      emitTooltipMode();
     },
     setLinking(linking) {
       if (state.linking === linking) return;
@@ -223,6 +264,7 @@ export function createToolController() {
         pins.clear();
         pins.add(pointId);
         emit({ type: "pins", plotId });
+        emitTooltipMode();
         if (prunePinnedHighlights()) {
           emit({ type: "pinnedHighlight", pointId });
         }
@@ -238,6 +280,7 @@ export function createToolController() {
         pins.add(pointId);
       }
       emit({ type: "pins", plotId });
+      emitTooltipMode();
       if (prunePinnedHighlights()) {
         emit({ type: "pinnedHighlight", pointId });
       }
@@ -256,6 +299,7 @@ export function createToolController() {
       }
       if (changed) {
         emit({ type: "pins", plotId });
+        emitTooltipMode();
       }
     },
     clearPins(plotId) {
@@ -263,6 +307,7 @@ export function createToolController() {
       if (pins.size) {
         pins.clear();
         emit({ type: "pins", plotId });
+        emitTooltipMode();
         if (prunePinnedHighlights()) {
           emit({ type: "pinnedHighlight" });
         }
@@ -286,6 +331,7 @@ export function createToolController() {
       }
       if (changed) {
         emit({ type: "pins" });
+        emitTooltipMode();
         emit({ type: "pinnedHighlight", pointId });
         emit({ type: "drawPoints", pointId });
       }
@@ -298,6 +344,7 @@ export function createToolController() {
       state.drawnPointIds.clear();
       drawnPointColorIndexes.clear();
       emit({ type: "pins" });
+      emitTooltipMode();
       emit({ type: "highlightedPoint", pointId: null });
       emit({ type: "pinnedHighlight" });
       emit({ type: "drawPoints" });
@@ -443,10 +490,24 @@ export function createToolsBar(controller) {
   tooltipMenu.append(cursorTooltipLabel, pinnedTooltipLabel);
   tooltipDetails.append(tooltipSummary, tooltipMenu);
   dropdownDetails.add(tooltipDetails);
-  tooltipSummary.addEventListener("click", () => {
+  tooltipSummary.addEventListener("click", (event) => {
+    if (controller.areTooltipsForcedDisabled?.()) {
+      event.preventDefault();
+      tooltipDetails.open = false;
+      return;
+    }
     closeDropdowns(tooltipDetails);
   });
+  tooltipDetails.addEventListener("toggle", () => {
+    if (controller.areTooltipsForcedDisabled?.() && tooltipDetails.open) {
+      tooltipDetails.open = false;
+    }
+  });
   tooltipToggle.addEventListener("change", () => {
+    if (controller.areTooltipsForcedDisabled?.()) {
+      updateActive();
+      return;
+    }
     const enabled = tooltipToggle.checked;
     if (!enabled) {
       controller.setTooltipTargets({ cursor: false, pinned: false });
@@ -458,12 +519,20 @@ export function createToolsBar(controller) {
     }
   });
   cursorTooltipInput.addEventListener("change", () => {
+    if (controller.areTooltipsForcedDisabled?.()) {
+      updateActive();
+      return;
+    }
     controller.setTooltipTargets({
       cursor: cursorTooltipInput.checked,
       pinned: pinnedTooltipInput.checked
     });
   });
   pinnedTooltipInput.addEventListener("change", () => {
+    if (controller.areTooltipsForcedDisabled?.()) {
+      updateActive();
+      return;
+    }
     controller.setTooltipTargets({
       cursor: cursorTooltipInput.checked,
       pinned: pinnedTooltipInput.checked
@@ -494,9 +563,21 @@ export function createToolsBar(controller) {
       button.dataset.active = String(controller.getTool() === toolId);
     }
     const tooltipTargets = controller.getTooltipTargets();
+    const tooltipsForcedDisabled = controller.areTooltipsForcedDisabled?.() ?? false;
     tooltipToggle.checked = tooltipTargets.cursor || tooltipTargets.pinned;
     cursorTooltipInput.checked = tooltipTargets.cursor;
     pinnedTooltipInput.checked = tooltipTargets.pinned;
+    tooltipToggle.disabled = tooltipsForcedDisabled;
+    cursorTooltipInput.disabled = tooltipsForcedDisabled;
+    pinnedTooltipInput.disabled = tooltipsForcedDisabled;
+    tooltipField.dataset.disabled = String(tooltipsForcedDisabled);
+    tooltipSummary.setAttribute("aria-disabled", String(tooltipsForcedDisabled));
+    tooltipSummary.title = tooltipsForcedDisabled
+      ? "Tooltips are disabled while brushing or when more than 60 points are highlighted."
+      : "Choose tooltip targets";
+    if (tooltipsForcedDisabled) {
+      tooltipDetails.open = false;
+    }
     const moveSelectInput = root.querySelector("[data-move-select]");
     if (moveSelectInput) {
       moveSelectInput.checked = controller.isMoveSelectEnabled();

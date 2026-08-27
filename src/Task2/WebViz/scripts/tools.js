@@ -42,6 +42,28 @@ export function createToolController() {
     return state.linking ? globalPins : getLocalPins(plotId);
   }
 
+  function getAllPins() {
+    const pins = new Set(globalPins);
+    for (const localPins of localPinsByPlot.values()) {
+      for (const pinId of localPins) {
+        pins.add(pinId);
+      }
+    }
+    return pins;
+  }
+
+  function prunePinnedHighlights() {
+    const pins = getAllPins();
+    let changed = false;
+    for (const pointId of state.pinnedHighlightedPointIds) {
+      if (!pins.has(pointId)) {
+        state.pinnedHighlightedPointIds.delete(pointId);
+        changed = true;
+      }
+    }
+    return changed;
+  }
+
   return {
     state,
     subscribe(listener) {
@@ -142,6 +164,9 @@ export function createToolController() {
         pins.clear();
         pins.add(pointId);
         emit({ type: "pins", plotId });
+        if (prunePinnedHighlights()) {
+          emit({ type: "pinnedHighlight", pointId });
+        }
         return;
       }
 
@@ -151,6 +176,9 @@ export function createToolController() {
         pins.add(pointId);
       }
       emit({ type: "pins", plotId });
+      if (prunePinnedHighlights()) {
+        emit({ type: "pinnedHighlight", pointId });
+      }
     },
     addPins(plotId, pointIds) {
       const pins = getTargetPins(plotId);
@@ -170,6 +198,9 @@ export function createToolController() {
       if (pins.size) {
         pins.clear();
         emit({ type: "pins", plotId });
+        if (prunePinnedHighlights()) {
+          emit({ type: "pinnedHighlight" });
+        }
       }
     },
     removePin(pointId) {
@@ -198,13 +229,7 @@ export function createToolController() {
       emit({ type: "pinnedHighlight" });
     },
     getAllPinnedIds() {
-      const pins = new Set(globalPins);
-      for (const localPins of localPinsByPlot.values()) {
-        for (const pinId of localPins) {
-          pins.add(pinId);
-        }
-      }
-      return pins;
+      return getAllPins();
     },
     getPinnedIds(plotId) {
       const pins = new Set(globalPins);

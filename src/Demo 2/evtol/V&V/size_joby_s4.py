@@ -3,10 +3,10 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from Task1.evtol.aircraft import Aircraft
+from evtol.aircraft import Aircraft
 
 # Construct the absolute path to the JSON file
-json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'NASA_LC.json'))
+json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'Joby_s4.json'))
 ac = Aircraft(json_path)
 
 # MTOW Convergence 
@@ -134,14 +134,14 @@ print(f"{'Mission Total':<25s} {primary_total + reserve_total:>12.4f}")
 print(f"\nBattery Mass: {ac.battery_mass_kg:.2f} kg")
 
 
-# Comparison to Reference Values
+# Comparison to Reference Values 
 reference_values = {
-    "Actual (kg)": 1752.0,
-    "CTOW (kg)": 1752.0,
-    "Hover power (kW)": 229.676,
-    "Cruise power (kW)": 76.0614,
-    "Battery weight (kg)": 330.669,
-    "Cruise L/D": 10.4,
+    "PTOW (kg)": 1815.0,
+    "CTOW (kg)": 1961.0,
+    "Hover power (kW)": 413.0,
+    "Cruise power (kW)": 151.5,
+    "Battery weight (kg)": 374.6,
+    "Cruise L/D": 4.1,
 }
 
 ptow_kg = history[0]["mtow_guess_kg"]
@@ -150,14 +150,15 @@ hover_power_kw = ac._calc_hover_electric_power_kw()
 cruise_power_kw = ac._calc_cruise_avg_electric_power_kw()
 cruise_distance_km = (ac.mission.cruise_h_m_p_s * ac.mission.cruise_s) / 1000.0
 cruise_energy_kwh = cruise_power_kw * (ac.mission.cruise_s / 3600.0)
+num_pax = 4
+pax_km_per_kwh = (num_pax * cruise_distance_km / cruise_energy_kwh) if cruise_energy_kwh else None
 
 sized_values = {
-    "Actual (kg)": ptow_kg,
+    "PTOW (kg)": ptow_kg,
     "CTOW (kg)": ctow_kg,
     "Hover power (kW)": hover_power_kw,
     "Cruise power (kW)": cruise_power_kw,
     "Battery weight (kg)": ac.battery_mass_kg,
-    "kWh/100km": (cruise_energy_kwh / (cruise_distance_km / 100.0)) if cruise_distance_km else None,
     "Cruise L/D": ac.cruise_l_p_d,
 }
 

@@ -2,18 +2,21 @@
 
 Python replacement for the JMP workflow, built around your four goals.
 
+Run every command from the repository root. Data files live under `data/`
+at the root, not next to these scripts.
+
 ## Setup
 
 ```
 pip install pandas numpy matplotlib scikit-learn --break-system-packages
 ```
 
-Put your full DOE export at, e.g., `data/full_htp_doe.csv` (same column
+Put your full DOE export at `data/full_htp_doe.csv` (same column
 schema as the sample you provided — this is a like-for-like drop-in).
 
 ## 0. Before you run anything: fix the constraint limits
 
-**Open `htp_config.py` first.** The `CONSTRAINTS` dict has one entry per
+**Open `src/Demo 1/misc/htp_config.py` first.** The `CONSTRAINTS` dict has one entry per
 `Cert_S*` column. The speed-ratio (§25.107) and OEI climb-gradient
 (§25.121) limits are real regulatory numbers for a two-engine airplane and
 are safe defaults. Everything involving elevator/rudder/aileron authority
@@ -26,7 +29,7 @@ reads from this one file, so you only fix it once.
 ## 1. Recreate the JMP-style scatterplot matrix
 
 ```
-python 01_scatterplot_matrix.py data/full_htp_doe.csv --highlight feasible
+python "src/Demo 1/misc/01_scatterplot_matrix.py" data/full_htp_doe.csv --highlight feasible
 ```
 
 Grey = full sampled design space, black = the subset that satisfies every
@@ -38,7 +41,7 @@ variables.
 ## 2. Which variables are important
 
 ```
-python 02_variable_importance.py data/full_htp_doe.csv
+python "src/Demo 1/misc/02_variable_importance.py" data/full_htp_doe.csv
 ```
 
 Fits a random-forest surrogate per objective (OEW, block fuel, CD) and
@@ -50,7 +53,7 @@ is a genuine tradeoff lever.
 ## 3. Which constraints are active and shrink the space
 
 ```
-python 03_constraint_analysis.py data/full_htp_doe.csv --x DV_ARHT --y DV_SHT
+python "src/Demo 1/misc/03_constraint_analysis.py" data/full_htp_doe.csv --x DV_ARHT --y DV_SHT
 ```
 
 Ranks every `Cert_S*` constraint by how often it's the *tightest* margin
@@ -64,7 +67,7 @@ not by controllability."
 ## 4. Multi-objective tradeoff and geometry comparison
 
 ```
-python 04_pareto_tradeoff.py data/full_htp_doe.csv --obj-a OEW_lbm --obj-b CD
+python "src/Demo 1/misc/04_pareto_tradeoff.py" data/full_htp_doe.csv --obj-a OEW_lbm --obj-b CD
 ```
 
 Computes the non-dominated front between two objectives among *feasible*

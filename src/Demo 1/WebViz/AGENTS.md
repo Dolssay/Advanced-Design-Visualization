@@ -39,5 +39,5 @@ These instructions apply to files in this `WebViz` directory and its subdirector
   ```powershell
   npx.cmd http-server . -p 8000
   ```
-- Open `http://localhost:8000/src/Task2/WebViz/index.html`.
+- Open `http://localhost:8000/src/Demo%201/WebViz/index.html`.
 - Do not test via `file://`, because ES modules and CSV loading require HTTP serving.

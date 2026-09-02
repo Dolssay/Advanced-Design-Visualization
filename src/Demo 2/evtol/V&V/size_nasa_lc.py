@@ -3,10 +3,10 @@
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-from Task1.evtol.aircraft import Aircraft
+from evtol.aircraft import Aircraft
 
 # Construct the absolute path to the JSON file
-json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'NASA_TR.json'))
+json_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'NASA_LC.json'))
 ac = Aircraft(json_path)
 
 # MTOW Convergence 
@@ -135,25 +135,30 @@ print(f"\nBattery Mass: {ac.battery_mass_kg:.2f} kg")
 
 
 # Comparison to Reference Values
-LBS_TO_KG = 0.453592
-
 reference_values = {
-    'DESIGN GROSS WT (kg)': 6636.0 * LBS_TO_KG,
-    'WEIGHT EMPTY (kg)': 5424.0 * LBS_TO_KG,
-    'STRUCTURE GRP (kg)': 1731.4 * LBS_TO_KG,
-    'PROPULSION GRP (kg)': 2270.8 * LBS_TO_KG,
-    'SYSTEM & EQUIP (kg)': 1042.2 * LBS_TO_KG,
+    "Actual (kg)": 1752.0,
+    "CTOW (kg)": 1752.0,
+    "Hover power (kW)": 229.676,
+    "Cruise power (kW)": 76.0614,
+    "Battery weight (kg)": 330.669,
+    "Cruise L/D": 10.4,
 }
 
-ptow_kg = history[0]['mtow_guess_kg']
+ptow_kg = history[0]["mtow_guess_kg"]
 ctow_kg = final_mtow
+hover_power_kw = ac._calc_hover_electric_power_kw()
+cruise_power_kw = ac._calc_cruise_avg_electric_power_kw()
+cruise_distance_km = (ac.mission.cruise_h_m_p_s * ac.mission.cruise_s) / 1000.0
+cruise_energy_kwh = cruise_power_kw * (ac.mission.cruise_s / 3600.0)
 
 sized_values = {
-    'DESIGN GROSS WT (kg)': ctow_kg,
-    'WEIGHT EMPTY (kg)': ac.empty_mass_kg + ac.battery_mass_kg,
-    'STRUCTURE GRP (kg)': sum(structural.values()) + ac.lift_rotor_hub_mass_kg + ac.tilt_rotor_mass_kg,
-    'PROPULSION GRP (kg)': ac.epu_mass_kg + ac.battery_mass_kg, 
-    'SYSTEM & EQUIP (kg)': sum(subsystems.values()),
+    "Actual (kg)": ptow_kg,
+    "CTOW (kg)": ctow_kg,
+    "Hover power (kW)": hover_power_kw,
+    "Cruise power (kW)": cruise_power_kw,
+    "Battery weight (kg)": ac.battery_mass_kg,
+    "kWh/100km": (cruise_energy_kwh / (cruise_distance_km / 100.0)) if cruise_distance_km else None,
+    "Cruise L/D": ac.cruise_l_p_d,
 }
 
 def percent_diff(sized, reference):
@@ -171,70 +176,16 @@ def fmt_pct(value, width=10, precision=1):
         return f"{'n/a':>{width}s}"
     return f"{value:>{width}.{precision}f}"
 
-print("\n--- Comparison to Reference Values (Percent Difference) ---")
-print(f"{'Metric':<22s} {'Sized (kg)':>12s} {'Ref (kg)':>12s} {'% Diff':>10s}")
-print("-" * 60)
+print("\nComparison to Reference Values (Percent Difference) ")
+print(f"{'Metric':<18s} {'Sized':>12s} {'Ref':>12s} {'% Diff':>10s}")
+print("-" * 56)
 for metric, ref in reference_values.items():
     sized = sized_values.get(metric)
     pct = percent_diff(sized, ref)
-    precision = 2
+    precision = 3 if metric in {"Hover FoM"} else 2
     print(
-        f"{metric:<22s}"
+        f"{metric:<18s}"
         f"{fmt_val(sized, precision=precision)}"
         f"{fmt_val(ref, precision=precision)}"
         f"{fmt_pct(pct)}"
     )
-
-print("\n--- Detailed Mass Comparison (lb) ---")
-KG_2_LB = 2.20462
-
-# Reference values
-ref_lb = {
-    'Design Gross Weight': 6636.0,
-    'Weight Empty':        5424.0,
-    'Structure Group':     1731.4,
-    'Propulsion Group':    2270.8,
-    'Systems Group':       1042.2,
-
-}
-
-# Calculated values mapped to reference categories
-m_wing = ac.wing_mass_kg * KG_2_LB
-m_tails = (ac.horiz_tail_mass_kg + ac.vert_tail_mass_kg) * KG_2_LB
-m_wing_group = m_wing + m_tails # Assuming Wing Group includes tails based on total struct
-
-m_rotor_group = (ac.lift_rotor_hub_mass_kg + ac.tilt_rotor_mass_kg) * KG_2_LB
-m_fuse_group = ac.fuselage_mass_kg * KG_2_LB
-m_gear = ac.landing_gear_mass_kg * KG_2_LB
-m_nacelle = ac.boom_mass_kg * KG_2_LB
-
-m_struct = m_wing_group + m_rotor_group + m_fuse_group + m_gear + m_nacelle
-
-m_eng = ac.epu_mass_kg * KG_2_LB
-m_batt = ac.battery_mass_kg * KG_2_LB
-m_drive = ac.hivolt_power_dist_mass_kg * KG_2_LB
-m_prop = m_eng + m_batt + m_drive
-
-m_fc = ac.actuator_mass_kg * KG_2_LB
-m_hyd = 0.0
-m_elec = ac.lovolt_power_coms_mass_kg * KG_2_LB
-m_furnish = ac.furnishings_mass_kg * KG_2_LB
-m_ecs = ac.environmental_control_system_mass_kg * KG_2_LB
-m_av = ac.avionics_mass_kg * KG_2_LB
-
-m_systems = m_fc + m_elec + m_furnish + m_ecs + m_av + m_hyd
-
-calc_lb = {
-    'Design Gross Weight': ac.max_takeoff_mass_kg * KG_2_LB,
-    'Weight Empty':        ac.empty_mass_kg * KG_2_LB + ac.battery_mass_kg * KG_2_LB,
-    'Structure Group':     m_struct,
-    'Propulsion Group':    m_prop,
-    'Systems Group':       m_systems,
-}
-
-print(f"{'Component':<25s} {'Calc (lb)':>12s} {'Ref (lb)':>12s} {'% Diff':>10s}")
-print("-" * 63)
-for key, ref_val in ref_lb.items():
-    val = calc_lb.get(key, 0.0)
-    diff = 100.0 * (val - ref_val) / ref_val if ref_val != 0 else 0.0
-    print(f"{key:<25s} {val:>12.1f} {ref_val:>12.1f} {diff:>10.1f}")

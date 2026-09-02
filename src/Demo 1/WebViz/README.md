@@ -17,21 +17,20 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 
 1. Generate or update the dataset:
    ```bash
-   python src/Task2/filterGTB777.py
+   python "src/Demo 1/filterGTB777.py"
    ```
    This writes `data/GTB777.csv` at the repository root.
 
-2. Start a local HTTP server from the repository root (`Task`):
+2. Start a local HTTP server from the repository root:
    ```powershell
-   cd "e:\Work\Summer 2026\AOE\Task"
-   npx http-server . -p 8000
+   npx.cmd http-server . -p 8000
    ```
 
    This serves the repository so the browser can load module imports and CSV data correctly.
 
 3. Open the viewer in your browser:
    ```text
-   http://localhost:8000/src/Task2/WebViz/index.html
+   http://localhost:8000/src/Demo%201/WebViz/index.html
    ```
 
    Do not open the file as `file://...`.

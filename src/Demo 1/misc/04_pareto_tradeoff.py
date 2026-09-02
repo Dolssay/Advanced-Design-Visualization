@@ -12,11 +12,12 @@ Multi-objective tradeoff exploration:
      normalized bar chart. This is the direct answer to "what does a
      min-weight airplane look like vs. a min-drag airplane".
 
-Usage:
-    python 04_pareto_tradeoff.py <csv_path> [--obj-a OEW_lbm] [--obj-b CD] [--color-by Mission_BlockFuel_lbm]
+Usage (from repository root):
+    python "src/Demo 1/misc/04_pareto_tradeoff.py" data/full_htp_doe.csv --obj-a OEW_lbm --obj-b CD
 """
 
 import argparse
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -24,6 +25,8 @@ import pandas as pd
 
 from data_utils import load_doe, compute_margins, add_feasibility
 from htp_config import DESIGN_VARS
+
+DEFAULT_CSV = Path("data/full_htp_doe.csv")
 
 EXCLUDE = ["Cert_S125_RoD_TD"]
 
@@ -44,7 +47,7 @@ def pareto_mask(df, obj_a, obj_b):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("csv_path")
+    ap.add_argument("csv_path", nargs="?", default=str(DEFAULT_CSV))
     ap.add_argument("--obj-a", default="OEW_lbm")
     ap.add_argument("--obj-b", default="CD")
     ap.add_argument("--color-by", default="Mission_BlockFuel_lbm")

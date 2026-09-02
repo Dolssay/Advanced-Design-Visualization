@@ -10,11 +10,12 @@ Produces one bar chart per objective, plus a combined heatmap so you can see
 at a glance which variables matter for ALL objectives (real constraints on
 your design) vs. which matter for only ONE (the source of your tradeoffs).
 
-Usage:
-    python 02_variable_importance.py <csv_path>
+Usage (from repository root):
+    python "src/Demo 1/misc/02_variable_importance.py" data/full_htp_doe.csv
 """
 
 import argparse
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -25,6 +26,8 @@ from sklearn.model_selection import train_test_split
 
 from data_utils import load_doe
 from htp_config import DESIGN_VARS, OBJECTIVES
+
+DEFAULT_CSV = Path("data/full_htp_doe.csv")
 
 
 def importance_for_objective(df, design_vars, objective, random_state=0):
@@ -48,7 +51,7 @@ def importance_for_objective(df, design_vars, objective, random_state=0):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("csv_path")
+    ap.add_argument("csv_path", nargs="?", default=str(DEFAULT_CSV))
     ap.add_argument("--out-prefix", default="variable_importance")
     args = ap.parse_args()
 

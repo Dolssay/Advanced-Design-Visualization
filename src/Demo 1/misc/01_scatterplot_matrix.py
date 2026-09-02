@@ -6,18 +6,21 @@ pairwise scatterplots, shared axes down columns / across rows, full
 population in grey with a highlighted subset (feasible, or Pareto-optimal)
 overplotted in black.
 
-Usage:
-    python 01_scatterplot_matrix.py <csv_path> [--highlight feasible|pareto]
+Usage (from repository root):
+    python "src/Demo 1/misc/01_scatterplot_matrix.py" data/full_htp_doe.csv --highlight feasible
 """
 
 import argparse
 import sys
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
 
 from data_utils import load_doe, compute_margins, add_feasibility
 from htp_config import CONSTRAINTS
+
+DEFAULT_CSV = Path("data/full_htp_doe.csv")
 
 # Variables shown in the matrix -- edit this list for your own responses
 MATRIX_VARS = ["OEW_lbm", "Mission_BlockFuel_lbm", "CD"]
@@ -85,7 +88,7 @@ def plot_scatterplot_matrix(df, variables, highlight_mask, highlight_label,
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("csv_path")
+    ap.add_argument("csv_path", nargs="?", default=str(DEFAULT_CSV))
     ap.add_argument("--highlight", choices=["feasible", "pareto"], default="feasible")
     ap.add_argument("--out", default="scatterplot_matrix.png")
     args = ap.parse_args()

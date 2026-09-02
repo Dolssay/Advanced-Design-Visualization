@@ -12,11 +12,12 @@ Two outputs:
      script 02) colored by which constraint is binding at each point --
      this is the visual "constraint map" of the feasible region.
 
-Usage:
-    python 03_constraint_analysis.py <csv_path> [--x DV_ARHT] [--y DV_SHT]
+Usage (from repository root):
+    python "src/Demo 1/misc/03_constraint_analysis.py" data/full_htp_doe.csv --x DV_ARHT --y DV_SHT
 """
 
 import argparse
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
@@ -24,12 +25,14 @@ import pandas as pd
 from data_utils import load_doe, compute_margins, normalized_margins, add_feasibility
 from htp_config import CONSTRAINTS
 
+DEFAULT_CSV = Path("data/full_htp_doe.csv")
+
 EXCLUDE = ["Cert_S125_RoD_TD"]  # constraints without a real numeric limit set yet
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("csv_path")
+    ap.add_argument("csv_path", nargs="?", default=str(DEFAULT_CSV))
     ap.add_argument("--x", default="DV_ARHT", help="design variable for x-axis of constraint map")
     ap.add_argument("--y", default="DV_SHT", help="design variable for y-axis of constraint map")
     ap.add_argument("--out-prefix", default="constraint_analysis")

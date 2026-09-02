@@ -5,6 +5,8 @@ Shared helpers: load the DOE csv and compute constraint margins /
 feasibility from htp_config.CONSTRAINTS.
 """
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -30,7 +32,13 @@ def normalize_columns(columns):
 
 
 def load_doe(csv_path):
-    """Load the raw DOE csv, drop fully-empty columns (e.g. unused 'Obj')."""
+    """Load the raw DOE csv, drop fully-empty columns (e.g. unused 'Obj').
+
+    Paths are resolved from the current working directory (repository root).
+    """
+    csv_path = Path(csv_path)
+    if not csv_path.is_absolute():
+        csv_path = Path.cwd() / csv_path
     df = pd.read_csv(csv_path)
     df = df.dropna(axis=1, how="all")
     df.columns = normalize_columns(df.columns)

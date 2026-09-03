@@ -1,0 +1,85 @@
+.webviz-page {
+  display: flex;
+  align-items: flex-start;
+  gap: 28px;
+  width: 100%;
+}
+
+.webviz-page .webviz-shell {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.title-tab {
+  position: sticky;
+  top: 24px;
+  flex: 0 0 196px;
+  width: 196px;
+  padding: 8px 0 8px 4px;
+  box-sizing: border-box;
+}
+
+.title-tab-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.title-tab-entry {
+  margin: 0;
+}
+
+.title-tab-item {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  padding: 4px 10px;
+  margin: 0;
+  text-align: left;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: #b0b0b0;
+  cursor: pointer;
+  border-radius: 0;
+}
+
+.title-tab-item:hover {
+  color: #6b7280;
+}
+
+.title-tab-item-active {
+  color: #2563eb;
+  font-weight: 700;
+  border-left-color: #2563eb;
+}
+
+.plot-section {
+  scroll-margin-top: 24px;
+  width: 100%;
+}
+
+@media (max-width: 1200px) {
+  .webviz-page {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .title-tab {
+    position: static;
+    width: 100%;
+    flex-basis: auto;
+  }
+
+  .title-tab-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+  }
+}

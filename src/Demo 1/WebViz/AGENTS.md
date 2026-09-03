@@ -14,6 +14,7 @@ These instructions apply to files in this `WebViz` directory and its subdirector
 - Use ES module imports.
 - Import local helper modules from `./scripts/...` in root files and relative sibling paths inside `scripts/`.
 - Keep menu/sidebar helpers in `scripts/contentbox.js` when working on the Content panel.
+- Keep left-side plot navigation in `scripts/tiltleTab.js`.
 - Prefer CSS classes over inline style assignments.
 - Use inline styles only for runtime values that must be computed dynamically, such as canvas dimensions, tooltip positions, cursor state, and selection overlay geometry.
 - Keep D3-dependent code browser-friendly and avoid adding a bundler unless explicitly requested.
@@ -21,6 +22,7 @@ These instructions apply to files in this `WebViz` directory and its subdirector
 ## CSS
 
 - Put shared page styles in `stylings/base.css`.
+- Put left-side plot navigation styles in `stylings/tiltleTab.css`.
 - Put toolbar styles in `stylings/tools.css`.
 - Put Content panel styles in `stylings/content.css`.
 - Put scatterplot matrix styles in `stylings/splomGTB777.css`.

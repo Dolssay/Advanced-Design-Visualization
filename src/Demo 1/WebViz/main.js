@@ -1,5 +1,6 @@
 import { loadGTB777Data } from "./scripts/filteredGTB777.js";
 import { createScatterplotMatrix } from "./scripts/splomGTB777.js";
+import { createParallelCoordinates } from "./scripts/parallelCoordinates.js";
 import { createContentController } from "./scripts/contentbox.js";
 import { createToolController, createToolsBar } from "./scripts/tools.js";
 import { createPlotSection, createTitleTab } from "./scripts/tiltleTab.js";
@@ -8,7 +9,8 @@ const app = document.getElementById("app");
 const controller = createToolController();
 
 const PLOTS = [
-  { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" }
+  { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" },
+  { id: "plot-parallel-coordinates", title: "Parallel Coordinates" }
 ];
 
 async function init() {
@@ -26,6 +28,11 @@ async function init() {
         id: PLOTS[0].id,
         title: PLOTS[0].title,
         node: createScatterplotMatrix(data, controller, contentController)
+      }),
+      createPlotSection({
+        id: PLOTS[1].id,
+        title: PLOTS[1].title,
+        node: createParallelCoordinates(data, controller, contentController)
       })
     ];
 

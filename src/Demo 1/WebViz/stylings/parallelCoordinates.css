@@ -1,0 +1,96 @@
+.parallel-container {
+  width: 100%;
+}
+
+.parallel-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.parallel-title {
+  font-family: "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.parallel-subtitle {
+  color: #666;
+  font-size: 13px;
+}
+
+.parallel-frame {
+  position: relative;
+  width: 100%;
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid #d5d5d5;
+}
+
+.parallel-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.parallel-svg {
+  display: block;
+  min-width: 980px;
+  width: 100%;
+  height: auto;
+  position: relative;
+}
+
+.parallel-line {
+  fill: none;
+  stroke-width: 1.25;
+  opacity: 0.27;
+  transition: opacity 120ms ease, stroke-width 120ms ease;
+}
+
+.parallel-line:hover,
+.parallel-line-active {
+  stroke-width: 3;
+  opacity: 1;
+}
+
+.parallel-axis path,
+.parallel-axis line {
+  fill: none;
+  stroke: #1f2937;
+  shape-rendering: crispEdges;
+}
+
+.parallel-axis text {
+  fill: #374151;
+  font: 12px Arial, sans-serif;
+}
+
+.parallel-axis-label {
+  fill: #111827 !important;
+  font-size: 12px !important;
+}
+
+.parallel-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.parallel-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #222;
+  font-size: 13px;
+}
+
+.parallel-legend-swatch {
+  width: 22px;
+  height: 3px;
+  background: var(--legend-color);
+}

@@ -238,18 +238,6 @@ export function zoomablePlot({
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
     context.globalAlpha = 0.78;
-    let batchColor = null;
-    let batchPath = null;
-
-    function flushBatch() {
-      if (!batchPath) {
-        return;
-      }
-      context.fillStyle = batchColor;
-      context.fill(batchPath);
-      batchColor = null;
-      batchPath = null;
-    }
 
     for (const point of pointData) {
       const cx = xScale(point.x);
@@ -263,20 +251,14 @@ export function zoomablePlot({
       currentRenderedPointsById.set(point.id, renderedPoint);
 
       if (highlightedPointIds.has(point.id)) {
-        flushBatch();
         highlightedPoints.push(renderedPoint);
         continue;
       }
 
-      if (point.color !== batchColor) {
-        flushBatch();
-        batchColor = point.color;
-        batchPath = new Path2D();
-      }
-      batchPath.rect(cx - 1.5, cy - 1.5, 5.5, 5.5);
+      context.fillStyle = point.color;
+      context.fillRect(cx - 1.5, cy - 1.5, 5.5, 5.5);
       renderedPoints.push(renderedPoint);
     }
-    flushBatch();
 
     const pinnedIds = getPinnedIds();
     for (const pinnedPointId of pinnedIds) {

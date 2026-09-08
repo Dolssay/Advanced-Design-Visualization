@@ -230,6 +230,11 @@ export function createProfiler({
   controls.appendChild(resetButton);
   header.appendChild(controls);
 
+  const notice = document.createElement("div");
+  notice.className = "profiler-notice";
+  notice.hidden = true;
+  header.appendChild(notice);
+
   const scroll = document.createElement("div");
   scroll.className = "profiler-scroll";
 
@@ -551,6 +556,10 @@ export function createProfiler({
   container.append(header, scroll);
 
   container.controlsNode = controls;
+  container.setNotice = (text) => {
+    notice.textContent = text ?? "";
+    notice.hidden = !text;
+  };
   container.getCrosshair = () => ({ ...crosshair });
   container.setCrosshair = (values) => {
     let changed = false;

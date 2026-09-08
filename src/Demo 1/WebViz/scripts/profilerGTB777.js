@@ -67,6 +67,26 @@ function attachSyncControl(profiler, controller, contentController) {
   profiler.controlsNode.prepend(button);
 }
 
+function attachFilterNotice(profiler, contentController, sampleCount) {
+  function updateNotice() {
+    const selected = contentController.getSelectedLabels().size;
+    const total = contentController.getLabels().length;
+    profiler.setNotice(
+      selected === total
+        ? null
+        : `Label filter is active in the matrix only. These curves still come from the fit over all ${sampleCount} designs.`
+    );
+  }
+
+  contentController.subscribe((event) => {
+    if (event.type === "labels") {
+      updateNotice();
+    }
+  });
+
+  updateNotice();
+}
+
 export function createGTB777Profiler(data, controller = null, contentController = null, model = null) {
   const fitted = model ?? createGTB777ProfilerModel(data);
 
@@ -80,6 +100,10 @@ export function createGTB777Profiler(data, controller = null, contentController 
 
   if (controller?.subscribe && contentController?.getRowByPointId) {
     attachSyncControl(profiler, controller, contentController);
+  }
+
+  if (contentController?.subscribe) {
+    attachFilterNotice(profiler, contentController, fitted.getSampleCount());
   }
 
   return profiler;

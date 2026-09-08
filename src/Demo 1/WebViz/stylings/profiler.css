@@ -52,6 +52,21 @@
   cursor: not-allowed;
 }
 
+.profiler-notice {
+  margin-top: 10px;
+  padding: 7px 12px;
+  border: 1px solid #f1c0c0;
+  border-radius: 8px;
+  background: #fff6f6;
+  color: #8a3b3b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.profiler-notice[hidden] {
+  display: none;
+}
+
 .profiler-scroll {
   max-width: 100%;
   overflow-x: auto;

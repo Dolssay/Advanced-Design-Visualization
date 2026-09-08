@@ -39,7 +39,7 @@ async function init() {
       createPlotSection({
         id: PLOTS[1].id,
         title: PLOTS[1].title,
-        node: createGTB777Profiler(data)
+        node: createGTB777Profiler(data, controller, contentController)
       })
     ];
 

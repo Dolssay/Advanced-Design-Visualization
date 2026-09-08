@@ -195,6 +195,12 @@ export function createProfiler({
     }
   }
 
+  function resetAll() {
+    resetCrosshairValues();
+    resetDomains();
+    scheduleRender();
+  }
+
   const container = document.createElement("div");
   container.className = "profiler-container";
 
@@ -210,6 +216,19 @@ export function createProfiler({
     subtitleNode.textContent = subtitle;
     header.appendChild(subtitleNode);
   }
+
+  const controls = document.createElement("div");
+  controls.className = "profiler-controls";
+
+  const resetButton = document.createElement("button");
+  resetButton.type = "button";
+  resetButton.className = "profiler-button";
+  resetButton.textContent = "Reset";
+  resetButton.title = "Return every factor to its mean and restore the response axes (same as double-click)";
+  resetButton.addEventListener("click", () => resetAll());
+
+  controls.appendChild(resetButton);
+  header.appendChild(controls);
 
   const scroll = document.createElement("div");
   scroll.className = "profiler-scroll";
@@ -524,15 +543,14 @@ export function createProfiler({
 
   svg.addEventListener("dblclick", (event) => {
     event.preventDefault();
-    resetCrosshairValues();
-    resetDomains();
-    scheduleRender();
+    resetAll();
   });
 
   render();
 
   container.append(header, scroll);
 
+  container.controlsNode = controls;
   container.getCrosshair = () => ({ ...crosshair });
   container.setCrosshair = (values) => {
     let changed = false;

@@ -1,0 +1,138 @@
+.tornado-container {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.tornado-header {
+  text-align: center;
+  margin-bottom: 14px;
+}
+
+.tornado-title {
+  font-family: "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 4px;
+}
+
+.tornado-subtitle {
+  font-size: 13px;
+  color: #666;
+}
+
+.tornado-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.tornado-control-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #222;
+}
+
+.tornado-objective-select {
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  border-radius: 4px;
+  background: #fff;
+  color: #222;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.tornado-chart {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tornado-svg {
+  display: block;
+  width: 100%;
+  min-width: 720px;
+  height: auto;
+  background: #fff;
+}
+
+.tornado-grid line {
+  stroke: #e5e5e5;
+  stroke-width: 1;
+}
+
+.tornado-zero-line {
+  stroke: #333;
+  stroke-width: 1.5;
+}
+
+.tornado-bar {
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.tornado-bar:hover {
+  opacity: 0.75;
+}
+
+.tornado-bar-low {
+  fill: #d62728;
+}
+
+.tornado-bar-high {
+  fill: #2f6fdd;
+}
+
+.tornado-y-axis text {
+  font-size: 13px;
+  fill: #222;
+}
+
+.tornado-x-axis text {
+  font-size: 11px;
+  fill: #444;
+}
+
+.tornado-x-axis path,
+.tornado-x-axis line {
+  stroke: #777;
+}
+
+.tornado-axis-label {
+  font-size: 13px;
+  fill: #333;
+}
+
+.tornado-legend text {
+  font-size: 11px;
+  fill: #333;
+}
+
+.tornado-legend-low {
+  fill: #d62728;
+}
+
+.tornado-legend-high {
+  fill: #2f6fdd;
+}
+
+.tornado-tooltip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: rgba(20, 20, 20, 0.92);
+  color: white;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.tornado-empty {
+  font-size: 14px;
+  fill: #777;
+}

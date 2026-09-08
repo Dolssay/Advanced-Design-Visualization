@@ -80,7 +80,11 @@ function numericPairs(data, xKey, yKey) {
       x: Number(row[xKey]),
       y: Number(row[yKey])
     }))
-    .filter((point) => Number.isFinite(point.x) && Number.isFinite(point.y));
+    .filter(
+      (point) =>
+        Number.isFinite(point.x) &&
+        Number.isFinite(point.y)
+    );
 }
 
 function calculateSlope(data, xKey, yKey) {
@@ -98,34 +102,49 @@ function calculateSlope(data, xKey, yKey) {
 
   for (const point of pairs) {
     const dx = point.x - meanX;
+
     numerator += dx * (point.y - meanY);
     denominator += dx * dx;
   }
 
-  return denominator === 0 ? 0 : numerator / denominator;
+  return denominator === 0
+    ? 0
+    : numerator / denominator;
 }
 
 function calculateSensitivity(data, objectiveKey) {
-  return DESIGN_VARIABLES.map((variable) => {
-    const slope = calculateSlope(data, variable.key, objectiveKey);
+  return DESIGN_VARIABLES
+    .map((variable) => {
+      const slope = calculateSlope(
+        data,
+        variable.key,
+        objectiveKey
+      );
 
-    const lowImpact = slope * (variable.min - variable.baseline);
-    const highImpact = slope * (variable.max - variable.baseline);
+      const lowImpact =
+        slope * (variable.min - variable.baseline);
 
-    return {
-      ...variable,
-      slope,
-      lowImpact,
-      highImpact,
-      magnitude: Math.max(
-        Math.abs(lowImpact),
-        Math.abs(highImpact)
-      )
-    };
-  }).sort((a, b) => b.magnitude - a.magnitude);
+      const highImpact =
+        slope * (variable.max - variable.baseline);
+
+      return {
+        ...variable,
+        slope,
+        lowImpact,
+        highImpact,
+        magnitude: Math.max(
+          Math.abs(lowImpact),
+          Math.abs(highImpact)
+        )
+      };
+    })
+    .sort((a, b) => b.magnitude - a.magnitude);
 }
 
-export function createTornadoPlot(data, contentController = null) {
+export function createTornadoPlot(
+  data,
+  contentController = null
+) {
   const width = 900;
   const height = 520;
 
@@ -136,8 +155,11 @@ export function createTornadoPlot(data, contentController = null) {
     left: 150
   };
 
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
+  const innerWidth =
+    width - margin.left - margin.right;
+
+  const innerHeight =
+    height - margin.top - margin.bottom;
 
   const root = document.createElement("div");
   root.className = "tornado-container";
@@ -159,23 +181,38 @@ export function createTornadoPlot(data, contentController = null) {
   const controls = document.createElement("div");
   controls.className = "tornado-controls";
 
-  const objectiveLabel = document.createElement("label");
-  objectiveLabel.className = "tornado-control-label";
+  const objectiveLabel =
+    document.createElement("label");
+
+  objectiveLabel.className =
+    "tornado-control-label";
+
   objectiveLabel.textContent = "Objective:";
 
-  const objectiveSelect = document.createElement("select");
-  objectiveSelect.className = "tornado-objective-select";
+  const objectiveSelect =
+    document.createElement("select");
+
+  objectiveSelect.className =
+    "tornado-objective-select";
 
   for (const objective of OBJECTIVES) {
-    const option = document.createElement("option");
+    const option =
+      document.createElement("option");
+
     option.value = objective.key;
     option.textContent = objective.label;
+
     objectiveSelect.appendChild(option);
   }
 
-  controls.append(objectiveLabel, objectiveSelect);
+  controls.append(
+    objectiveLabel,
+    objectiveSelect
+  );
 
-  const chartContainer = document.createElement("div");
+  const chartContainer =
+    document.createElement("div");
+
   chartContainer.className = "tornado-chart";
 
   const svg = d3
@@ -184,17 +221,30 @@ export function createTornadoPlot(data, contentController = null) {
     .attr("class", "tornado-svg")
     .attr("viewBox", `0 0 ${width} ${height}`)
     .attr("role", "img")
-    .attr("aria-label", "GTB777 tornado sensitivity plot");
+    .attr(
+      "aria-label",
+      "GTB777 tornado sensitivity plot"
+    );
 
   const chart = svg
     .append("g")
-    .attr("transform", `translate(${margin.left},${margin.top})`);
+    .attr(
+      "transform",
+      `translate(${margin.left},${margin.top})`
+    );
 
-  const tooltip = document.createElement("div");
+  const tooltip =
+    document.createElement("div");
+
   tooltip.className = "tornado-tooltip";
   tooltip.style.display = "none";
 
-  root.append(header, controls, chartContainer, tooltip);
+  root.append(
+    header,
+    controls,
+    chartContainer,
+    tooltip
+  );
 
   function getVisibleData() {
     if (contentController) {
@@ -205,16 +255,23 @@ export function createTornadoPlot(data, contentController = null) {
   }
 
   function render() {
+    // Remove old legend before drawing a new one.
+    svg.selectAll(".tornado-legend").remove();
+
     const objectiveKey = objectiveSelect.value;
+
     const objective =
-      OBJECTIVES.find((item) => item.key === objectiveKey) || OBJECTIVES[0];
+      OBJECTIVES.find(
+        (item) => item.key === objectiveKey
+      ) || OBJECTIVES[0];
 
     const visibleData = getVisibleData();
 
-    const sensitivity = calculateSensitivity(
-      visibleData,
-      objective.key
-    );
+    const sensitivity =
+      calculateSensitivity(
+        visibleData,
+        objective.key
+      );
 
     chart.selectAll("*").remove();
 
@@ -225,16 +282,22 @@ export function createTornadoPlot(data, contentController = null) {
         .attr("y", innerHeight / 2)
         .attr("text-anchor", "middle")
         .attr("class", "tornado-empty")
-        .text("No data available for the current filter.");
+        .text(
+          "No data available for the current filter."
+        );
+
+      subtitle.textContent =
+        `0 designs analyzed — ${objective.label} sensitivity.`;
 
       return;
     }
 
-    const allImpacts = sensitivity.flatMap((variable) => [
-      variable.lowImpact,
-      variable.highImpact,
-      0
-    ]);
+    const allImpacts =
+      sensitivity.flatMap((variable) => [
+        variable.lowImpact,
+        variable.highImpact,
+        0
+      ]);
 
     let minImpact = d3.min(allImpacts);
     let maxImpact = d3.max(allImpacts);
@@ -244,17 +307,25 @@ export function createTornadoPlot(data, contentController = null) {
       maxImpact += 1;
     }
 
-    const padding = (maxImpact - minImpact) * 0.08;
+    const padding =
+      (maxImpact - minImpact) * 0.08;
 
     const x = d3
       .scaleLinear()
-      .domain([minImpact - padding, maxImpact + padding])
+      .domain([
+        minImpact - padding,
+        maxImpact + padding
+      ])
       .nice()
       .range([0, innerWidth]);
 
     const y = d3
       .scaleBand()
-      .domain(sensitivity.map((variable) => variable.label))
+      .domain(
+        sensitivity.map(
+          (variable) => variable.label
+        )
+      )
       .range([0, innerHeight])
       .padding(0.25);
 
@@ -287,56 +358,86 @@ export function createTornadoPlot(data, contentController = null) {
       .attr("class", "tornado-row")
       .attr(
         "transform",
-        (variable) => `translate(0,${y(variable.label)})`
+        (variable) =>
+          `translate(0,${y(variable.label)})`
       );
 
-    const halfHeight = y.bandwidth() / 2;
+    const halfHeight =
+      y.bandwidth() / 2;
 
     rows
       .append("rect")
-      .attr("class", "tornado-bar tornado-bar-low")
+      .attr(
+        "class",
+        "tornado-bar tornado-bar-low"
+      )
       .attr("x", (variable) =>
-        Math.min(zeroX, x(variable.lowImpact))
+        Math.min(
+          zeroX,
+          x(variable.lowImpact)
+        )
       )
       .attr("y", 0)
       .attr("width", (variable) =>
-        Math.abs(x(variable.lowImpact) - zeroX)
+        Math.abs(
+          x(variable.lowImpact) - zeroX
+        )
       )
       .attr("height", halfHeight);
 
     rows
       .append("rect")
-      .attr("class", "tornado-bar tornado-bar-high")
+      .attr(
+        "class",
+        "tornado-bar tornado-bar-high"
+      )
       .attr("x", (variable) =>
-        Math.min(zeroX, x(variable.highImpact))
+        Math.min(
+          zeroX,
+          x(variable.highImpact)
+        )
       )
       .attr("y", halfHeight)
       .attr("width", (variable) =>
-        Math.abs(x(variable.highImpact) - zeroX)
+        Math.abs(
+          x(variable.highImpact) - zeroX
+        )
       )
       .attr("height", halfHeight);
 
     rows
-      .on("mouseenter", function (event, variable) {
-        tooltip.style.display = "block";
+      .on(
+        "mouseenter",
+        function (event, variable) {
+          tooltip.style.display = "block";
 
-        tooltip.innerHTML = `
-          <strong>${variable.label}</strong><br>
-          Minimum: ${variable.min}<br>
-          Baseline: ${variable.baseline}<br>
-          Maximum: ${variable.max}<br>
-          Low impact: ${variable.lowImpact.toFixed(4)}<br>
-          High impact: ${variable.highImpact.toFixed(4)}
-        `;
-      })
+          tooltip.innerHTML = `
+            <strong>${variable.label}</strong><br>
+            Minimum: ${variable.min}<br>
+            Baseline: ${variable.baseline}<br>
+            Maximum: ${variable.max}<br>
+            Low impact: ${variable.lowImpact.toFixed(4)}<br>
+            High impact: ${variable.highImpact.toFixed(4)}
+          `;
+        }
+      )
       .on("mousemove", function (event) {
-        const rootBounds = root.getBoundingClientRect();
+        const rootBounds =
+          root.getBoundingClientRect();
 
         tooltip.style.left =
-          `${event.clientX - rootBounds.left + 12}px`;
+          `${
+            event.clientX -
+            rootBounds.left +
+            12
+          }px`;
 
         tooltip.style.top =
-          `${event.clientY - rootBounds.top + 12}px`;
+          `${
+            event.clientY -
+            rootBounds.top +
+            12
+          }px`;
       })
       .on("mouseleave", function () {
         tooltip.style.display = "none";
@@ -345,34 +446,62 @@ export function createTornadoPlot(data, contentController = null) {
     chart
       .append("g")
       .attr("class", "tornado-y-axis")
-      .call(d3.axisLeft(y).tickSize(0))
-      .call((axis) => axis.select(".domain").remove());
+      .call(
+        d3
+          .axisLeft(y)
+          .tickSize(0)
+      )
+      .call((axis) =>
+        axis.select(".domain").remove()
+      );
 
     chart
       .append("g")
       .attr("class", "tornado-x-axis")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(7));
+      .attr(
+        "transform",
+        `translate(0,${innerHeight})`
+      )
+      .call(
+        d3
+          .axisBottom(x)
+          .ticks(7)
+      );
 
     chart
       .append("text")
-      .attr("class", "tornado-axis-label")
+      .attr(
+        "class",
+        "tornado-axis-label"
+      )
       .attr("x", innerWidth / 2)
       .attr("y", innerHeight + 50)
       .attr("text-anchor", "middle")
-      .text(`Estimated change in ${objective.label}`);
+      .text(
+        `Estimated change in ${objective.label}`
+      );
 
     const legend = svg
       .append("g")
-      .attr("class", "tornado-legend")
+      .attr(
+        "class",
+        "tornado-legend"
+      )
       .attr(
         "transform",
-        `translate(${margin.left + innerWidth - 180},15)`
+        `translate(${
+          margin.left +
+          innerWidth -
+          180
+        },15)`
       );
 
     legend
       .append("rect")
-      .attr("class", "tornado-legend-low")
+      .attr(
+        "class",
+        "tornado-legend-low"
+      )
       .attr("width", 14)
       .attr("height", 14);
 
@@ -384,7 +513,10 @@ export function createTornadoPlot(data, contentController = null) {
 
     legend
       .append("rect")
-      .attr("class", "tornado-legend-high")
+      .attr(
+        "class",
+        "tornado-legend-high"
+      )
       .attr("x", 110)
       .attr("width", 14)
       .attr("height", 14);
@@ -400,7 +532,10 @@ export function createTornadoPlot(data, contentController = null) {
       `${objective.label} sensitivity.`;
   }
 
-  objectiveSelect.addEventListener("change", render);
+  objectiveSelect.addEventListener(
+    "change",
+    render
+  );
 
   if (contentController) {
     contentController.subscribe((event) => {

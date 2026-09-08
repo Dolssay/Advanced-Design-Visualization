@@ -1,0 +1,113 @@
+.profiler-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.profiler-header {
+  text-align: center;
+}
+
+.profiler-title {
+  font-family: "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.profiler-subtitle {
+  font-size: 13px;
+  color: #666;
+}
+
+.profiler-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.profiler-svg {
+  display: block;
+}
+
+.profiler-readout-label {
+  fill: #1f2937;
+  font: 700 11px Arial, sans-serif;
+}
+
+.profiler-readout-unit {
+  fill: #6b7280;
+  font: 9px Arial, sans-serif;
+}
+
+.profiler-readout-value {
+  fill: #d62728;
+  font: 700 15px Arial, sans-serif;
+}
+
+.profiler-readout-r2 {
+  fill: #9ca3af;
+  font: 9px Arial, sans-serif;
+}
+
+.profiler-tick-label {
+  fill: #222;
+  font: 9px Arial, sans-serif;
+}
+
+.profiler-gridline {
+  stroke: #e6e6e6;
+  stroke-width: 1;
+}
+
+.profiler-axis {
+  fill: none;
+  stroke: #999;
+  stroke-width: 1;
+}
+
+.profiler-curve {
+  fill: none;
+  stroke: #2563eb;
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.profiler-crosshair-v {
+  stroke: #d62728;
+  stroke-width: 1;
+}
+
+.profiler-crosshair-h {
+  stroke: #d62728;
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+  opacity: 0.65;
+}
+
+.profiler-marker {
+  fill: #d62728;
+  stroke: #fff;
+  stroke-width: 1;
+}
+
+.profiler-hidden {
+  display: none;
+}
+
+.profiler-factor-label {
+  fill: #374151;
+  font: 10px Arial, sans-serif;
+}
+
+.profiler-factor-bound {
+  fill: #9ca3af;
+  font: 9px Arial, sans-serif;
+}
+
+.profiler-factor-value {
+  fill: #d62728;
+  font: 700 11px Arial, sans-serif;
+}

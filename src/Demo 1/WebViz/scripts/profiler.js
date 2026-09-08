@@ -1,5 +1,7 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+let profilerInstanceCount = 0;
+
 export const PROFILER_LAYOUT = {
   readoutWidth: 92,
   yAxisWidth: 38,
@@ -187,6 +189,12 @@ export function createProfiler({
     }
   }
 
+  function resetCrosshairValues() {
+    for (const factor of factorSpecs) {
+      crosshair[factor.key] = factor.start;
+    }
+  }
+
   const container = document.createElement("div");
   container.className = "profiler-container";
 
@@ -213,6 +221,15 @@ export function createProfiler({
     height: totalHeight,
     role: "img",
     "aria-label": `${title}: ${responseSpecs.length} responses by ${factorSpecs.length} factors`
+  });
+
+  const clipId = `profiler-clip-${++profilerInstanceCount}`;
+  const defs = svgNode(svg, "defs");
+  svgNode(svgNode(defs, "clipPath", { id: clipId }), "rect", {
+    x: plotLeft,
+    y: plotTop,
+    width: plotRight - plotLeft,
+    height: plotBottom - plotTop
   });
 
   const readoutLayer = svgNode(svg, "g", { class: "profiler-readouts" });
@@ -292,16 +309,26 @@ export function createProfiler({
         y2: plotBottom
       });
 
-      const crosshairH = svgNode(group, "line", {
+      const clipped = svgNode(group, "g", { "clip-path": `url(#${clipId})` });
+
+      const crosshairH = svgNode(clipped, "line", {
         class: "profiler-crosshair-h",
         x1: plotLeft,
         x2: plotRight
       });
 
-      const curvePath = svgNode(group, "path", { class: "profiler-curve", d: "" });
-      const marker = svgNode(group, "circle", { class: "profiler-marker", r: 2.75 });
+      const curvePath = svgNode(clipped, "path", { class: "profiler-curve", d: "" });
+      const marker = svgNode(clipped, "circle", { class: "profiler-marker", r: 2.75 });
 
-      cells.push({ rowIndex: r, colIndex: c, gridlines, crosshairV, crosshairH, curvePath, marker });
+      const hit = svgNode(group, "rect", {
+        class: "profiler-hit",
+        x: plotLeft,
+        y: plotTop,
+        width: plotRight - plotLeft,
+        height: plotBottom - plotTop
+      });
+
+      cells.push({ rowIndex: r, colIndex: c, gridlines, crosshairV, crosshairH, curvePath, marker, hit });
     }
   }
 
@@ -440,7 +467,10 @@ export function createProfiler({
     });
   }
 
+  let renderQueued = false;
+
   function render() {
+    renderQueued = false;
     computeCurves();
     expandDomains();
     renderYAxes();
@@ -448,6 +478,56 @@ export function createProfiler({
     renderReadouts();
     renderXAxis();
   }
+
+  function scheduleRender() {
+    if (renderQueued) {
+      return;
+    }
+    renderQueued = true;
+    requestAnimationFrame(render);
+  }
+
+  function setFactorValue(factorKey, value) {
+    const factor = factorSpecs.find((entry) => entry.key === factorKey);
+    if (!factor || !Number.isFinite(value)) {
+      return false;
+    }
+
+    const clamped = Math.max(factor.domain[0], Math.min(factor.domain[1], value));
+    if (clamped === crosshair[factorKey]) {
+      return false;
+    }
+
+    crosshair[factorKey] = clamped;
+    return true;
+  }
+
+  function moveCrosshairFromPointer(cell, event) {
+    const factor = factorSpecs[cell.colIndex];
+    const [pointerX] = d3.pointer(event, cell.hit);
+    const bounded = Math.max(plotLeft, Math.min(plotRight, pointerX));
+    if (setFactorValue(factor.key, factor.scale.invert(bounded))) {
+      scheduleRender();
+    }
+  }
+
+  for (const cell of cells) {
+    d3.select(cell.hit).call(
+      d3.drag().on("start drag", (event) => {
+        if (event.sourceEvent?.detail > 1) {
+          return;
+        }
+        moveCrosshairFromPointer(cell, event);
+      })
+    );
+  }
+
+  svg.addEventListener("dblclick", (event) => {
+    event.preventDefault();
+    resetCrosshairValues();
+    resetDomains();
+    scheduleRender();
+  });
 
   render();
 
@@ -457,13 +537,7 @@ export function createProfiler({
   container.setCrosshair = (values) => {
     let changed = false;
     for (const factor of factorSpecs) {
-      const next = Number(values?.[factor.key]);
-      if (!Number.isFinite(next)) continue;
-      const clamped = Math.max(factor.domain[0], Math.min(factor.domain[1], next));
-      if (clamped !== crosshair[factor.key]) {
-        crosshair[factor.key] = clamped;
-        changed = true;
-      }
+      changed = setFactorValue(factor.key, Number(values?.[factor.key])) || changed;
     }
     if (changed) {
       render();
@@ -471,9 +545,7 @@ export function createProfiler({
     return changed;
   };
   container.resetCrosshair = () => {
-    for (const factor of factorSpecs) {
-      crosshair[factor.key] = factor.start;
-    }
+    resetCrosshairValues();
     render();
   };
   container.resetDomains = () => {

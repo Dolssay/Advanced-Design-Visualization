@@ -1,3 +1,5 @@
+import { getGTB777SketchColor } from "./sketchGTB777.js";
+
 const drawOrder = {
   "Infeasible": 0,
   "Level 2-2": 1,
@@ -71,43 +73,108 @@ export function createParallelCoordinates(data, controller = null, contentContro
   const chart = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
   const axisLayer = chart.append("g").attr("class", "parallel-axes");
   const context = canvas.getContext("2d");
-  const linePathsByLabel = new Map();
+  const rowsById = new Map();
+  const highlightedPathCache = new Map();
   let visibleData = [];
+  let renderToken = 0;
 
   function getVisibleData() {
     return contentController ? contentController.getFilteredData(sortedData) : sortedData;
   }
 
   for (const row of sortedData) {
-    let path = linePathsByLabel.get(row.Label);
-    if (!path) {
-      path = new Path2D();
-      linePathsByLabel.set(row.Label, path);
-    }
-    dimensions.forEach((dimension, index) => {
-      const pointX = margin.left + x(dimension.key);
-      const pointY = margin.top + scales.get(dimension.key)(Number(row[dimension.key]));
-      if (index === 0) {
-        path.moveTo(pointX, pointY);
-      } else {
-        path.lineTo(pointX, pointY);
+    const pointId = `point-${row.__rowId}`;
+    rowsById.set(pointId, row);
+  }
+
+  function getRowPoints(row) {
+    return dimensions.map((dimension) => [
+      margin.left + x(dimension.key),
+      margin.top + scales.get(dimension.key)(Number(row[dimension.key]))
+    ]);
+  }
+
+  function drawHighlightedLines(visibleLabels) {
+    const drawnPointIds = controller?.getDrawnPointIds?.() ?? new Set();
+    for (const [pointId, drawIndex] of drawnPointIds.entries()) {
+      const row = rowsById.get(pointId);
+      if (!row || !visibleLabels.has(row.Label)) {
+        continue;
       }
-    });
+      const rowPoints = getRowPoints(row);
+      let path = highlightedPathCache.get(pointId);
+      if (!path) {
+        path = new Path2D();
+        rowPoints.forEach(([pointX, pointY], index) => {
+          if (index === 0) {
+            path.moveTo(pointX, pointY);
+          } else {
+            path.lineTo(pointX, pointY);
+          }
+        });
+        highlightedPathCache.set(pointId, path);
+      }
+
+      context.globalAlpha = 1;
+      context.lineWidth = 3;
+      context.strokeStyle = getGTB777SketchColor(
+        controller?.getDrawnPointColorIndex?.(pointId) ?? drawIndex
+      );
+      context.stroke(path);
+    }
+  }
+
+  function drawBackgroundInChunks(token, labelIndex = 0, rowIndex = 0) {
+    if (token !== renderToken) {
+      return;
+    }
+
+    const visibleLabels = new Set(visibleData.map((row) => row.Label));
+    if (controller?.getDrawnPointIds?.().size) {
+      drawHighlightedLines(visibleLabels);
+      return;
+    }
+
+    while (labelIndex < colorDomain.length && !visibleLabels.has(colorDomain[labelIndex])) {
+      labelIndex += 1;
+      rowIndex = 0;
+    }
+
+    if (labelIndex >= colorDomain.length) {
+      drawHighlightedLines(visibleLabels);
+      return;
+    }
+
+    const labelRows = visibleData.filter((row) => row.Label === colorDomain[labelIndex]);
+    const endIndex = Math.min(rowIndex + 350, labelRows.length);
+    const path = new Path2D();
+    for (let index = rowIndex; index < endIndex; index++) {
+      getRowPoints(labelRows[index]).forEach(([pointX, pointY], pointIndex) => {
+        if (pointIndex === 0) {
+          path.moveTo(pointX, pointY);
+        } else {
+          path.lineTo(pointX, pointY);
+        }
+      });
+    }
+
+    context.globalAlpha = 0.27;
+    context.lineWidth = 1.25;
+    context.strokeStyle = color(colorDomain[labelIndex]);
+    context.stroke(path);
+
+    if (endIndex < labelRows.length) {
+      window.requestAnimationFrame(() => drawBackgroundInChunks(token, labelIndex, endIndex));
+    } else {
+      window.requestAnimationFrame(() => drawBackgroundInChunks(token, labelIndex + 1, 0));
+    }
   }
 
   function render() {
     visibleData = getVisibleData();
+    renderToken += 1;
     context.clearRect(0, 0, width, height);
-    context.globalAlpha = 0.27;
-    context.lineWidth = 1.25;
-    const visibleLabels = new Set(visibleData.map((row) => row.Label));
-    for (const [label, path] of linePathsByLabel) {
-      if (!visibleLabels.has(label)) {
-        continue;
-      }
-      context.strokeStyle = color(label);
-      context.stroke(path);
-    }
+    drawBackgroundInChunks(renderToken);
   }
 
   function getCanvasPoint(event) {
@@ -136,12 +203,9 @@ export function createParallelCoordinates(data, controller = null, contentContro
     let nearestDistance = Number.POSITIVE_INFINITY;
 
     for (const row of visibleData) {
+      const rowPoints = getRowPoints(row);
       let previousPoint = null;
-      for (const dimension of dimensions) {
-        const currentPoint = [
-          margin.left + x(dimension.key),
-          margin.top + scales.get(dimension.key)(Number(row[dimension.key]))
-        ];
+      for (const currentPoint of rowPoints) {
         if (previousPoint) {
           const distance = distanceToSegment(
             pointerX,
@@ -195,9 +259,17 @@ export function createParallelCoordinates(data, controller = null, contentContro
     contentController.subscribe((event) => {
       if (event.type === "labels") {
         render();
+      } else if (event.type === "drawPoints") {
+        render();
       }
     });
   }
+
+  controller?.subscribe?.((event) => {
+    if (event.type === "drawPoints") {
+      render();
+    }
+  });
 
   const legend = document.createElement("div");
   legend.className = "parallel-legend";

@@ -75,8 +75,9 @@ export function createParallelCoordinates(data, controller = null, contentContro
   const context = canvas.getContext("2d");
   const rowsById = new Map();
   const highlightedPathCache = new Map();
+  const rowsByLabel = new Map(colorDomain.map((label) => [label, []]));
+  const labelCanvasCache = new Map();
   let visibleData = [];
-  let renderToken = 0;
 
   function getVisibleData() {
     return contentController ? contentController.getFilteredData(sortedData) : sortedData;
@@ -85,6 +86,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
   for (const row of sortedData) {
     const pointId = `point-${row.__rowId}`;
     rowsById.set(pointId, row);
+    rowsByLabel.get(row.Label)?.push(row);
   }
 
   function getRowPoints(row) {
@@ -124,28 +126,45 @@ export function createParallelCoordinates(data, controller = null, contentContro
     }
   }
 
-  function drawBackgroundInChunks(token, labelIndex = 0, rowIndex = 0) {
-    if (token !== renderToken) {
-      return;
-    }
-
-    const visibleLabels = new Set(visibleData.map((row) => row.Label));
+  function drawCachedBackground(visibleLabels) {
     if (controller?.getDrawnPointIds?.().size) {
-      drawHighlightedLines(visibleLabels);
       return;
     }
 
-    while (labelIndex < colorDomain.length && !visibleLabels.has(colorDomain[labelIndex])) {
-      labelIndex += 1;
-      rowIndex = 0;
+    context.globalAlpha = 1;
+    for (const label of colorDomain) {
+      const cachedCanvas = labelCanvasCache.get(label);
+      if (visibleLabels.has(label) && cachedCanvas) {
+        context.drawImage(cachedCanvas, 0, 0);
+      }
     }
+  }
 
+  function render() {
+    visibleData = getVisibleData();
+    context.clearRect(0, 0, width, height);
+    const visibleLabels = new Set(visibleData.map((row) => row.Label));
+    drawCachedBackground(visibleLabels);
+    drawHighlightedLines(visibleLabels);
+  }
+
+  function buildLabelCache(labelIndex = 0, rowIndex = 0) {
     if (labelIndex >= colorDomain.length) {
-      drawHighlightedLines(visibleLabels);
+      render();
       return;
     }
 
-    const labelRows = visibleData.filter((row) => row.Label === colorDomain[labelIndex]);
+    const label = colorDomain[labelIndex];
+    let cache = labelCanvasCache.get(label);
+    if (!cache) {
+      cache = document.createElement("canvas");
+      cache.width = width;
+      cache.height = height;
+      labelCanvasCache.set(label, cache);
+    }
+
+    const cacheContext = cache.getContext("2d");
+    const labelRows = rowsByLabel.get(label) ?? [];
     const endIndex = Math.min(rowIndex + 350, labelRows.length);
     const path = new Path2D();
     for (let index = rowIndex; index < endIndex; index++) {
@@ -158,23 +177,17 @@ export function createParallelCoordinates(data, controller = null, contentContro
       });
     }
 
-    context.globalAlpha = 0.27;
-    context.lineWidth = 1.25;
-    context.strokeStyle = color(colorDomain[labelIndex]);
-    context.stroke(path);
+    cacheContext.globalAlpha = 0.27;
+    cacheContext.lineWidth = 1.25;
+    cacheContext.strokeStyle = color(label);
+    cacheContext.stroke(path);
+    render();
 
     if (endIndex < labelRows.length) {
-      window.requestAnimationFrame(() => drawBackgroundInChunks(token, labelIndex, endIndex));
+      window.requestAnimationFrame(() => buildLabelCache(labelIndex, endIndex));
     } else {
-      window.requestAnimationFrame(() => drawBackgroundInChunks(token, labelIndex + 1, 0));
+      window.requestAnimationFrame(() => buildLabelCache(labelIndex + 1, 0));
     }
-  }
-
-  function render() {
-    visibleData = getVisibleData();
-    renderToken += 1;
-    context.clearRect(0, 0, width, height);
-    drawBackgroundInChunks(renderToken);
   }
 
   function getCanvasPoint(event) {
@@ -254,6 +267,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
   }
 
   render();
+  window.requestAnimationFrame(() => buildLabelCache());
 
   if (contentController) {
     contentController.subscribe((event) => {

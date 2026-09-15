@@ -31,6 +31,7 @@ These instructions apply to files in this `WebViz` directory and its subdirector
 - Put scatterplot matrix styles in `stylings/splomGTB777.css`.
 - Put plot cell, canvas, tooltip, and selection overlay styles in `stylings/zoomablePlot.css`.
 - Put parallel coordinates styles in `stylings/parallelCoordinates.css`, styling the `parallel-*` classes from `scripts/parallelCoordinates.js` (`parallel-container`, `parallel-header`, `parallel-title`, `parallel-subtitle`, `parallel-frame`, `parallel-canvas`, `parallel-svg`, `parallel-axis`, `parallel-axis-label`, `parallel-legend`, `parallel-legend-item`, `parallel-legend-swatch`). This file does not exist yet — create it and link it from `index.html` as part of finishing the parallel coordinates plot.
+- Put prediction profiler styles in `stylings/profiler.css`.
 - If JavaScript needs to pass dynamic visual values to CSS, prefer CSS custom properties over hardcoded inline declarations.
 
 ## HTML

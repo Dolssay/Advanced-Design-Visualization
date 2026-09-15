@@ -10,6 +10,9 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 - `scripts/splomGTB777.js` - scatterplot matrix builder
 - `scripts/tools.js` - shared toolbar and plot interaction controller
 - `scripts/zoomablePlot.js` - zoom/pan scatterplot cell renderer
+- `scripts/profiler.js` - config-driven prediction profiler renderer, reusable across demos
+- `scripts/profilerModel.js` - least-squares fit and the predict/coefficient-JSON interface
+- `scripts/profilerGTB777.js` - GTB777 factor and response config, plus the profiler's controller wiring
 - `stylings/` - CSS files for the page, toolbar, matrix, and plot cells
 - `README.md` - this file
 

@@ -12,9 +12,9 @@ const controller = createToolController();
 
 const PLOTS = [
   { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" },
-  { id: "plot-tornado", title: "Tornado Plot" },
   { id: "plot-parallel-coordinates", title: "Parallel Coordinates" },
-  { id: "plot-prediction-profiler", title: "Prediction Profiler" }
+  { id: "plot-prediction-profiler", title: "Prediction Profiler" },
+  { id: "plot-tornado", title: "Tornado Plot" }
 ];
 
 async function init() {
@@ -37,12 +37,12 @@ async function init() {
       createPlotSection({
         id: PLOTS[1].id,
         title: PLOTS[1].title,
-        node: createGTB777Profiler(data, controller, contentController)
+        node: createParallelCoordinates(data, controller, contentController)
       }),
       createPlotSection({
         id: PLOTS[2].id,
         title: PLOTS[2].title,
-        node: createParallelCoordinates(data, controller, contentController)
+        node: createGTB777Profiler(data, controller, contentController)
       }),
       createPlotSection({
         id: PLOTS[3].id,

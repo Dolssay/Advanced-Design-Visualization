@@ -1,6 +1,7 @@
 import { loadGTB777Data } from "./scripts/filteredGTB777.js";
 import { createScatterplotMatrix } from "./scripts/splomGTB777.js";
 import { createParallelCoordinates } from "./scripts/parallelCoordinates.js";
+import { createTornadoPlot } from "./scripts/tornadoPlot.js";
 import { createContentController } from "./scripts/contentbox.js";
 import { createToolController, createToolsBar } from "./scripts/tools.js";
 import { createPlotSection, createTitleTab } from "./scripts/tiltleTab.js";
@@ -12,13 +13,15 @@ const controller = createToolController();
 const PLOTS = [
   { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" },
   { id: "plot-parallel-coordinates", title: "Parallel Coordinates" },
-  { id: "plot-prediction-profiler", title: "Prediction Profiler" }
+  { id: "plot-prediction-profiler", title: "Prediction Profiler" },
+  { id: "plot-tornado", title: "Tornado Plot" }
 ];
 
 async function init() {
   try {
     const data = await loadGTB777Data("../../../data/GTB777.csv");
     const contentController = createContentController(data);
+
     const page = document.createElement("div");
     page.className = "webviz-page";
 
@@ -29,7 +32,7 @@ async function init() {
       createPlotSection({
         id: PLOTS[0].id,
         title: PLOTS[0].title,
-        node: createScatterplotMatrix(data, controller, contentController)
+        node: createScatterplotMatrix( data, controller, contentController)
       }),
       createPlotSection({
         id: PLOTS[1].id,
@@ -40,17 +43,33 @@ async function init() {
         id: PLOTS[2].id,
         title: PLOTS[2].title,
         node: createGTB777Profiler(data, controller, contentController)
-      })
+      }),
+      createPlotSection({
+        id: PLOTS[3].id,
+        title: PLOTS[3].title,
+        node: createTornadoPlot(
+          data,
+          contentController
+        )
+      }),
     ];
 
     shell.append(createToolsBar(controller), ...plots);
-    page.append(createTitleTab(PLOTS), shell);
+
+    page.append(
+      createTitleTab(PLOTS),
+      shell
+    );
+
     app.appendChild(page);
   } catch (error) {
     console.error(error);
+
     const message = document.createElement("div");
     message.className = "error";
-    message.textContent = `Failed to load GTB777 dataset: ${error.message}`;
+    message.textContent =
+      `Failed to load GTB777 dataset: ${error.message}`;
+
     app.appendChild(message);
   }
 }

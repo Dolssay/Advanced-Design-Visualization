@@ -37,8 +37,8 @@ async function init() {
         node: createParallelCoordinates(data, controller, contentController)
       }),
       createPlotSection({
-        id: PLOTS[1].id,
-        title: PLOTS[1].title,
+        id: PLOTS[2].id,
+        title: PLOTS[2].title,
         node: createGTB777Profiler(data, controller, contentController)
       })
     ];

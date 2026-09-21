@@ -1,4 +1,5 @@
 import { getGTB777SketchColor } from "./sketchGTB777.js";
+import { simplifyPolyline } from "./polylineSimplify.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -23,6 +24,29 @@ const dimensions = [
   { key: "Block Fuel (1000 lbm)", label: "Block Fuel (1000 lbm)" },
   { key: "Cruise CD (count)", label: "Cruise CD (count)" }
 ];
+
+// The background density layer is rasterized at a reduced resolution and then scaled up
+// on composite. At the low opacity these lines already draw at, the softening from that
+// upscale is close to invisible, while the pixel-fill cost of rasterizing drops roughly
+// with the square of RENDER_SCALE. Sharp overlay lines (hover/pin/drawn highlights) are
+// unaffected -- they are drawn separately, directly at full resolution.
+const RENDER_SCALE = 0.6;
+
+// Per-row vertex simplification tolerance, in CSS pixels. A row's interior axis vertex is
+// dropped if removing it would not move the rendered line by more than this many pixels.
+// This is lossless in appearance and has no dependency on what the data represents, so it
+// applies equally well to any future dataset plotted with this module.
+const SIMPLIFY_TOLERANCE_PX = 0.4;
+
+const WORKER_CHUNK_ROWS = 1500;
+const WORKER_PROGRESS_INTERVAL_MS = 48;
+const BACKGROUND_ALPHA = 0.27;
+const BACKGROUND_LINE_WIDTH = 1.25;
+
+const supportsOffThreadRender =
+  typeof Worker !== "undefined" &&
+  typeof OffscreenCanvas !== "undefined" &&
+  typeof createImageBitmap === "function";
 
 export function createParallelCoordinates(data, controller = null, contentController = null) {
   const sortedData = [...data].sort((a, b) => {
@@ -77,6 +101,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
   const highlightedPathCache = new Map();
   const rowsByLabel = new Map(colorDomain.map((label) => [label, []]));
   const labelCanvasCache = new Map();
+  const rasterCanvasCache = new Map();
   let visibleData = [];
 
   function getVisibleData() {
@@ -148,13 +173,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
     drawHighlightedLines(visibleLabels);
   }
 
-  function buildLabelCache(labelIndex = 0, rowIndex = 0) {
-    if (labelIndex >= colorDomain.length) {
-      render();
-      return;
-    }
-
-    const label = colorDomain[labelIndex];
+  function getOrCreateLabelCache(label) {
     let cache = labelCanvasCache.get(label);
     if (!cache) {
       cache = document.createElement("canvas");
@@ -162,13 +181,151 @@ export function createParallelCoordinates(data, controller = null, contentContro
       cache.height = height;
       labelCanvasCache.set(label, cache);
     }
+    return cache;
+  }
 
-    const cacheContext = cache.getContext("2d");
+  // --- Off-main-thread build (preferred path) ---------------------------------------
+  //
+  // A dedicated Worker (one per plot instance, from the generic lineDensityWorker
+  // module) does all point-projection, simplification, and rasterization work. The main
+  // thread only ever receives a finished bitmap and blits it -- it never runs the heavy
+  // per-row math itself. That keeps this plot's initial build from ever competing with
+  // the scatterplot matrix's own rendering for main-thread time, no matter how slow the
+  // build is on a given machine.
+
+  const axisPositions = new Float32Array(dimensions.map((dimension) => margin.left + x(dimension.key)));
+  const axisScales = new Float32Array(dimensions.length * 4);
+  dimensions.forEach((dimension, index) => {
+    const scale = scales.get(dimension.key);
+    const [domainMin, domainMax] = scale.domain();
+    const [rangeAtDomainMin, rangeAtDomainMax] = scale.range();
+    axisScales[index * 4 + 0] = domainMin;
+    axisScales[index * 4 + 1] = domainMax;
+    axisScales[index * 4 + 2] = margin.top + rangeAtDomainMin;
+    axisScales[index * 4 + 3] = margin.top + rangeAtDomainMax;
+  });
+
+  function buildRowsFloatArray(labelRows) {
+    const flat = new Float32Array(labelRows.length * dimensions.length);
+    labelRows.forEach((row, rowIndex) => {
+      dimensions.forEach((dimension, dimIndex) => {
+        flat[rowIndex * dimensions.length + dimIndex] = Number(row[dimension.key]);
+      });
+    });
+    return flat;
+  }
+
+  let worker = null;
+  let nextRequestId = 0;
+  const requestIdByKey = new Map();
+  const pendingBitmaps = new Map();
+  let paintScheduled = false;
+
+  function schedulePaint() {
+    if (paintScheduled) {
+      return;
+    }
+    paintScheduled = true;
+    window.requestAnimationFrame(() => {
+      paintScheduled = false;
+      for (const [label, bitmap] of pendingBitmaps) {
+        const cache = getOrCreateLabelCache(label);
+        const cacheContext = cache.getContext("2d");
+        cacheContext.clearRect(0, 0, width, height);
+        cacheContext.drawImage(bitmap, 0, 0, width, height);
+        bitmap.close();
+      }
+      pendingBitmaps.clear();
+      render();
+    });
+  }
+
+  function buildBackgroundsOnWorker() {
+    worker = new Worker(new URL("./lineDensityWorker.js", import.meta.url), { type: "module" });
+    worker.onmessage = (event) => {
+      const message = event.data;
+      if (message?.type !== "progress") {
+        return;
+      }
+      if (requestIdByKey.get(message.canvasKey) !== message.requestId) {
+        message.bitmap.close();
+        return;
+      }
+      const previous = pendingBitmaps.get(message.canvasKey);
+      if (previous) {
+        previous.close();
+      }
+      pendingBitmaps.set(message.canvasKey, message.bitmap);
+      schedulePaint();
+    };
+
+    for (const label of colorDomain) {
+      const labelRows = rowsByLabel.get(label) ?? [];
+      if (!labelRows.length) {
+        continue;
+      }
+      const requestId = ++nextRequestId;
+      requestIdByKey.set(label, requestId);
+      const rowsFloatArray = buildRowsFloatArray(labelRows);
+      worker.postMessage({
+        type: "buildBackground",
+        requestId,
+        canvasKey: label,
+        width,
+        height,
+        renderScale: RENDER_SCALE,
+        dimensionCount: dimensions.length,
+        axisPositions,
+        axisScales,
+        rows: rowsFloatArray,
+        simplifyTolerancePx: SIMPLIFY_TOLERANCE_PX,
+        style: { color: color(label), alpha: BACKGROUND_ALPHA, lineWidth: BACKGROUND_LINE_WIDTH },
+        chunkRows: WORKER_CHUNK_ROWS,
+        progressIntervalMs: WORKER_PROGRESS_INTERVAL_MS
+      }, [rowsFloatArray.buffer]);
+    }
+  }
+
+  // --- Main-thread fallback (only when Worker/OffscreenCanvas is unavailable) --------
+  //
+  // Same chunked-over-requestAnimationFrame shape as before, still gets the resolution
+  // scaling and simplification benefits, but does not get the thread isolation -- there
+  // is no way to rasterize off-thread without OffscreenCanvas support.
+
+  function buildBackgroundsOnMainThread(labelIndex = 0, rowIndex = 0) {
+    if (labelIndex >= colorDomain.length) {
+      render();
+      return;
+    }
+
+    const label = colorDomain[labelIndex];
     const labelRows = rowsByLabel.get(label) ?? [];
+    if (!labelRows.length) {
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0));
+      return;
+    }
+
+    const cache = getOrCreateLabelCache(label);
+    const rasterWidth = Math.max(1, Math.round(width * RENDER_SCALE));
+    const rasterHeight = Math.max(1, Math.round(height * RENDER_SCALE));
+    let raster = rasterCanvasCache.get(label);
+    if (!raster) {
+      raster = document.createElement("canvas");
+      raster.width = rasterWidth;
+      raster.height = rasterHeight;
+      rasterCanvasCache.set(label, raster);
+    }
+    const rasterContext = raster.getContext("2d");
+
     const endIndex = Math.min(rowIndex + 350, labelRows.length);
     const path = new Path2D();
     for (let index = rowIndex; index < endIndex; index++) {
-      getRowPoints(labelRows[index]).forEach(([pointX, pointY], pointIndex) => {
+      const points = getRowPoints(labelRows[index]).map(([pointX, pointY]) => [
+        pointX * RENDER_SCALE,
+        pointY * RENDER_SCALE
+      ]);
+      const simplified = simplifyPolyline(points, SIMPLIFY_TOLERANCE_PX * RENDER_SCALE);
+      simplified.forEach(([pointX, pointY], pointIndex) => {
         if (pointIndex === 0) {
           path.moveTo(pointX, pointY);
         } else {
@@ -177,16 +334,22 @@ export function createParallelCoordinates(data, controller = null, contentContro
       });
     }
 
-    cacheContext.globalAlpha = 0.27;
-    cacheContext.lineWidth = 1.25;
-    cacheContext.strokeStyle = color(label);
-    cacheContext.stroke(path);
+    rasterContext.globalAlpha = BACKGROUND_ALPHA;
+    rasterContext.lineWidth = Math.max(0.5, BACKGROUND_LINE_WIDTH * RENDER_SCALE);
+    rasterContext.strokeStyle = color(label);
+    rasterContext.lineJoin = "round";
+    rasterContext.lineCap = "round";
+    rasterContext.stroke(path);
+
+    const cacheContext = cache.getContext("2d");
+    cacheContext.clearRect(0, 0, width, height);
+    cacheContext.drawImage(raster, 0, 0, width, height);
     render();
 
     if (endIndex < labelRows.length) {
-      window.requestAnimationFrame(() => buildLabelCache(labelIndex, endIndex));
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex, endIndex));
     } else {
-      window.requestAnimationFrame(() => buildLabelCache(labelIndex + 1, 0));
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0));
     }
   }
 
@@ -267,7 +430,11 @@ export function createParallelCoordinates(data, controller = null, contentContro
   }
 
   render();
-  window.requestAnimationFrame(() => buildLabelCache());
+  if (supportsOffThreadRender) {
+    buildBackgroundsOnWorker();
+  } else {
+    window.requestAnimationFrame(() => buildBackgroundsOnMainThread());
+  }
 
   if (contentController) {
     contentController.subscribe((event) => {

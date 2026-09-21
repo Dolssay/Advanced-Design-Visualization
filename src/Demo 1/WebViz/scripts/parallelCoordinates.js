@@ -1,5 +1,4 @@
 import { getGTB777SketchColor } from "./sketchGTB777.js";
-import { simplifyPolyline } from "./polylineSimplify.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -31,12 +30,6 @@ const dimensions = [
 // with the square of RENDER_SCALE. Sharp overlay lines (hover/pin/drawn highlights) are
 // unaffected -- they are drawn separately, directly at full resolution.
 const RENDER_SCALE = 0.6;
-
-// Per-row vertex simplification tolerance, in CSS pixels. A row's interior axis vertex is
-// dropped if removing it would not move the rendered line by more than this many pixels.
-// This is lossless in appearance and has no dependency on what the data represents, so it
-// applies equally well to any future dataset plotted with this module.
-const SIMPLIFY_TOLERANCE_PX = 0.4;
 
 const WORKER_CHUNK_ROWS = 1500;
 const WORKER_PROGRESS_INTERVAL_MS = 48;
@@ -187,8 +180,8 @@ export function createParallelCoordinates(data, controller = null, contentContro
   // --- Off-main-thread build (preferred path) ---------------------------------------
   //
   // A dedicated Worker (one per plot instance, from the generic lineDensityWorker
-  // module) does all point-projection, simplification, and rasterization work. The main
-  // thread only ever receives a finished bitmap and blits it -- it never runs the heavy
+  // module) does all point-projection and rasterization work. The main thread only ever
+  // receives a finished bitmap and blits it -- it never runs the heavy
   // per-row math itself. That keeps this plot's initial build from ever competing with
   // the scatterplot matrix's own rendering for main-thread time, no matter how slow the
   // build is on a given machine.
@@ -278,7 +271,6 @@ export function createParallelCoordinates(data, controller = null, contentContro
         axisPositions,
         axisScales,
         rows: rowsFloatArray,
-        simplifyTolerancePx: SIMPLIFY_TOLERANCE_PX,
         style: { color: color(label), alpha: BACKGROUND_ALPHA, lineWidth: BACKGROUND_LINE_WIDTH },
         chunkRows: WORKER_CHUNK_ROWS,
         progressIntervalMs: WORKER_PROGRESS_INTERVAL_MS
@@ -289,8 +281,8 @@ export function createParallelCoordinates(data, controller = null, contentContro
   // --- Main-thread fallback (only when Worker/OffscreenCanvas is unavailable) --------
   //
   // Same chunked-over-requestAnimationFrame shape as before, still gets the resolution
-  // scaling and simplification benefits, but does not get the thread isolation -- there
-  // is no way to rasterize off-thread without OffscreenCanvas support.
+  // scaling benefit, but does not get the thread isolation -- there is no way to
+  // rasterize off-thread without OffscreenCanvas support.
 
   function buildBackgroundsOnMainThread(labelIndex = 0, rowIndex = 0) {
     if (labelIndex >= colorDomain.length) {
@@ -320,16 +312,13 @@ export function createParallelCoordinates(data, controller = null, contentContro
     const endIndex = Math.min(rowIndex + 350, labelRows.length);
     const path = new Path2D();
     for (let index = rowIndex; index < endIndex; index++) {
-      const points = getRowPoints(labelRows[index]).map(([pointX, pointY]) => [
-        pointX * RENDER_SCALE,
-        pointY * RENDER_SCALE
-      ]);
-      const simplified = simplifyPolyline(points, SIMPLIFY_TOLERANCE_PX * RENDER_SCALE);
-      simplified.forEach(([pointX, pointY], pointIndex) => {
+      getRowPoints(labelRows[index]).forEach(([pointX, pointY], pointIndex) => {
+        const scaledX = pointX * RENDER_SCALE;
+        const scaledY = pointY * RENDER_SCALE;
         if (pointIndex === 0) {
-          path.moveTo(pointX, pointY);
+          path.moveTo(scaledX, scaledY);
         } else {
-          path.lineTo(pointX, pointY);
+          path.lineTo(scaledX, scaledY);
         }
       });
     }

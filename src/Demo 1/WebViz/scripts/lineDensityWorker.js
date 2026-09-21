@@ -1,5 +1,3 @@
-import { simplifyPolyline } from "./polylineSimplify.js";
-
 // Generic off-main-thread rasterizer for dense multi-line ("parallel coordinates" style)
 // backgrounds. This module knows nothing about any specific dataset, aircraft, or plot --
 // it only understands linear axes (a numeric domain mapped to a pixel range) and rows of
@@ -42,7 +40,6 @@ async function buildBackground(job) {
     axisPositions,
     axisScales,
     rows,
-    simplifyTolerancePx,
     style,
     chunkRows,
     progressIntervalMs
@@ -60,7 +57,6 @@ async function buildBackground(job) {
   context.lineCap = "round";
 
   const numRows = dimensionCount > 0 ? Math.floor(rows.length / dimensionCount) : 0;
-  const toleranceRaster = simplifyTolerancePx * renderScale;
 
   let path = new Path2D();
   let lastPost = performance.now();
@@ -74,7 +70,6 @@ async function buildBackground(job) {
     const endIndex = Math.min(rowIndex + chunkRows, numRows);
     for (let r = rowIndex; r < endIndex; r++) {
       const base = r * dimensionCount;
-      const points = new Array(dimensionCount);
       for (let d = 0; d < dimensionCount; d++) {
         const value = rows[base + d];
         const x = axisPositions[d] * renderScale;
@@ -85,13 +80,7 @@ async function buildBackground(job) {
           axisScales[d * 4 + 2],
           axisScales[d * 4 + 3]
         ) * renderScale;
-        points[d] = [x, y];
-      }
-
-      const simplified = simplifyPolyline(points, toleranceRaster);
-      for (let i = 0; i < simplified.length; i++) {
-        const [x, y] = simplified[i];
-        if (i === 0) {
+        if (d === 0) {
           path.moveTo(x, y);
         } else {
           path.lineTo(x, y);

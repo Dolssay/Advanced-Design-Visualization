@@ -1,4 +1,5 @@
 import { getGTB777SketchColor } from "./sketchGTB777.js";
+import { getHighlightOutlineColor } from "./colorUtils.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -35,6 +36,21 @@ const WORKER_CHUNK_ROWS = 1500;
 const WORKER_PROGRESS_INTERVAL_MS = 48;
 const BACKGROUND_ALPHA = 0.27;
 const BACKGROUND_LINE_WIDTH = 1.25;
+
+// Outline color for hover/pinned-highlight lines -- matches the dark outline zoomablePlot.js
+// (the scatterplot matrix) already draws around a highlighted point, so a point reads as
+// "the same point" whether you're looking at the splom or the parallel coordinates plot.
+const HIGHLIGHT_OUTLINE_COLOR = "#111827";
+const HIGHLIGHT_OUTLINE_WIDTH = 4;
+const HIGHLIGHT_LINE_WIDTH = 2;
+
+// A point becomes "added to the Content box" the moment it is click-selected on any plot
+// (controller.getAllPinnedIds() -- the same set the Content box's "Manage Highlighted Points"
+// list is built from). This is deliberately the same green zoomablePlot.js already outlines
+// a click-selected point with, so a design reads as "added to Content" consistently across
+// both plots, independent of whether it is currently hovered or list-pinned on top of that.
+const SELECTION_LINE_COLOR = "#16a34a";
+const SELECTION_LINE_WIDTH = 2;
 
 const supportsOffThreadRender =
   typeof Worker !== "undefined" &&
@@ -114,6 +130,77 @@ export function createParallelCoordinates(data, controller = null, contentContro
     ]);
   }
 
+  function getRowPath(pointId, row) {
+    let path = highlightedPathCache.get(pointId);
+    if (!path) {
+      path = new Path2D();
+      getRowPoints(row).forEach(([pointX, pointY], index) => {
+        if (index === 0) {
+          path.moveTo(pointX, pointY);
+        } else {
+          path.lineTo(pointX, pointY);
+        }
+      });
+      highlightedPathCache.set(pointId, path);
+    }
+    return path;
+  }
+
+  // Mirrors the splom's click-to-select pins (controller.getAllPinnedIds()) -- the same set
+  // that populates the Content box's "Manage Highlighted Points" list. Drawn beneath the
+  // hover/pinned-highlight layer so a point that is both selected and currently hovered still
+  // reads clearly as "hovered" on top of its green "in Content box" state.
+  function drawContentBoxSelectionLines(visibleLabels) {
+    const pinnedPointIds = controller?.getAllPinnedIds?.() ?? new Set();
+    if (!pinnedPointIds.size) {
+      return;
+    }
+
+    for (const pointId of pinnedPointIds) {
+      const row = rowsById.get(pointId);
+      if (!row || !visibleLabels.has(row.Label)) {
+        continue;
+      }
+      const path = getRowPath(pointId, row);
+
+      context.globalAlpha = 1;
+      context.lineWidth = SELECTION_LINE_WIDTH;
+      context.strokeStyle = SELECTION_LINE_COLOR;
+      context.stroke(path);
+    }
+  }
+
+  // Mirrors the splom's and the content box's shared hover/pinned-highlight state
+  // (controller.getHighlightedPointIds(): the current hover plus anything pinned via the
+  // Content panel's highlight list). Drawn on top of the cached background but below the
+  // "Draw aircraft sketch" overlay, as a dark halo behind the row's own label color, so a
+  // highlighted line visibly stands out from the density field without losing its color.
+  function drawHoverAndPinHighlights(visibleLabels) {
+    const highlightedPointIds = controller?.getHighlightedPointIds?.() ?? new Set();
+    if (!highlightedPointIds.size) {
+      return;
+    }
+
+    for (const pointId of highlightedPointIds) {
+      const row = rowsById.get(pointId);
+      if (!row || !visibleLabels.has(row.Label)) {
+        continue;
+      }
+      const path = getRowPath(pointId, row);
+
+      context.globalAlpha = 1;
+      context.lineWidth = HIGHLIGHT_OUTLINE_WIDTH;
+      // Fall back to a light grey outline when the row's own label color is already
+      // dark/black (e.g. GTB777's "Level 2-1") so the outline stays visible against it.
+      context.strokeStyle = getHighlightOutlineColor(color(row.Label), { dark: HIGHLIGHT_OUTLINE_COLOR });
+      context.stroke(path);
+
+      context.lineWidth = HIGHLIGHT_LINE_WIDTH;
+      context.strokeStyle = color(row.Label);
+      context.stroke(path);
+    }
+  }
+
   function drawHighlightedLines(visibleLabels) {
     const drawnPointIds = controller?.getDrawnPointIds?.() ?? new Set();
     for (const [pointId, drawIndex] of drawnPointIds.entries()) {
@@ -121,19 +208,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
       if (!row || !visibleLabels.has(row.Label)) {
         continue;
       }
-      const rowPoints = getRowPoints(row);
-      let path = highlightedPathCache.get(pointId);
-      if (!path) {
-        path = new Path2D();
-        rowPoints.forEach(([pointX, pointY], index) => {
-          if (index === 0) {
-            path.moveTo(pointX, pointY);
-          } else {
-            path.lineTo(pointX, pointY);
-          }
-        });
-        highlightedPathCache.set(pointId, path);
-      }
+      const path = getRowPath(pointId, row);
 
       context.globalAlpha = 1;
       context.lineWidth = 3;
@@ -163,6 +238,8 @@ export function createParallelCoordinates(data, controller = null, contentContro
     context.clearRect(0, 0, width, height);
     const visibleLabels = new Set(visibleData.map((row) => row.Label));
     drawCachedBackground(visibleLabels);
+    drawContentBoxSelectionLines(visibleLabels);
+    drawHoverAndPinHighlights(visibleLabels);
     drawHighlightedLines(visibleLabels);
   }
 
@@ -436,7 +513,12 @@ export function createParallelCoordinates(data, controller = null, contentContro
   }
 
   controller?.subscribe?.((event) => {
-    if (event.type === "drawPoints") {
+    if (
+      event.type === "drawPoints" ||
+      event.type === "highlightedPoint" ||
+      event.type === "pinnedHighlight" ||
+      event.type === "pins"
+    ) {
       render();
     }
   });

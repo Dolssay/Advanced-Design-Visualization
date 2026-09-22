@@ -1,3 +1,5 @@
+import { getHighlightOutlineColor } from "./colorUtils.js";
+
 export function zoomablePlot({
   data,
   xKey,
@@ -297,7 +299,9 @@ export function zoomablePlot({
       context.globalAlpha = 1;
       context.fillStyle = highlightedPoint.color;
       context.fillRect(highlightedPoint.cx - 3, highlightedPoint.cy - 3, 8, 8);
-      context.strokeStyle = "#111827";
+      // Fall back to a light grey outline when the point's own fill is already dark/black
+      // (e.g. the GTB777 "Level 2-1" label) so the outline stays visible against it.
+      context.strokeStyle = getHighlightOutlineColor(highlightedPoint.color);
       context.lineWidth = 1.5;
       context.strokeRect(highlightedPoint.cx - 3, highlightedPoint.cy - 3, 8, 8);
       context.restore();

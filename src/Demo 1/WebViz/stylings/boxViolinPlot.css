@@ -1,0 +1,241 @@
+.violin-container {
+  position: relative;
+  width: 100%;
+}
+
+.violin-header {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.violin-title {
+  font-family: "Times New Roman", serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #111;
+  margin-bottom: 6px;
+}
+
+.violin-subtitle {
+  font-size: 13px;
+  color: #666;
+  max-width: 760px;
+  margin: 0 auto;
+  line-height: 1.4;
+}
+
+.violin-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+
+.violin-segmented {
+  display: inline-flex;
+  border: 1px solid #c9c9c9;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.violin-segment {
+  border: 0;
+  border-right: 1px solid #e0e0e0;
+  background: transparent;
+  color: #1f2937;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+
+.violin-segment:last-child {
+  border-right: 0;
+}
+
+.violin-segment:hover {
+  background: #f3f4f6;
+}
+
+.violin-segment[data-active="true"] {
+  background: #1f2937;
+  color: #fff;
+}
+
+.violin-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #222;
+  cursor: pointer;
+}
+
+.violin-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+
+.violin-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #222;
+}
+
+.violin-legend-item[data-inactive="true"] {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+.violin-legend-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--legend-color) 40%, #ffffff);
+  border: 1.5px solid var(--legend-color);
+  box-sizing: border-box;
+}
+
+.violin-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--legend-color);
+  border: 1.5px solid #fff;
+  box-shadow: 0 0 0 1px #d1d5db;
+}
+
+.violin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 8px;
+  padding: 10px;
+  background: #fff;
+  border: 1px solid #d5d5d5;
+}
+
+.violin-status {
+  grid-column: 1 / -1;
+  padding: 40px 0;
+  text-align: center;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.violin-panel {
+  border: 1px solid #eee;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.violin-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.violin-panel-title {
+  font-size: 13px;
+  font-weight: 700;
+  fill: #111827;
+}
+
+.violin-panel-kind {
+  font-size: 10px;
+  fill: #9ca3af;
+}
+
+.violin-grid-lines line {
+  stroke: #eeeeee;
+}
+
+.violin-axis text {
+  font-size: 10px;
+  fill: #4b5563;
+}
+
+.violin-axis line {
+  stroke: #9ca3af;
+}
+
+.violin-shape {
+  fill: color-mix(in srgb, var(--violin-color) 38%, #ffffff);
+  stroke: var(--violin-color);
+  stroke-width: 1.1;
+}
+
+.violin-box {
+  fill: #ffffff;
+  stroke: #111827;
+  stroke-width: 1;
+}
+
+.violin-box-solo {
+  fill: color-mix(in srgb, var(--violin-color) 38%, #ffffff);
+  stroke: var(--violin-color);
+  stroke-width: 1.4;
+}
+
+.violin-whisker {
+  stroke: #111827;
+  stroke-width: 1;
+}
+
+.violin-median {
+  stroke: #111827;
+  stroke-width: 2;
+}
+
+.violin-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+
+.violin-group:hover .violin-shape {
+  stroke-width: 2;
+}
+
+.violin-marker {
+  fill: var(--marker-fill);
+  stroke: #ffffff;
+  stroke-width: 1.5;
+  cursor: pointer;
+}
+
+.violin-marker-highlight {
+  stroke: var(--marker-outline);
+  stroke-width: 2;
+}
+
+.violin-empty {
+  font-size: 12px;
+  fill: #9ca3af;
+}
+
+.violin-tooltip {
+  position: absolute;
+  z-index: 20;
+  pointer-events: none;
+  padding: 8px 10px;
+  border-radius: 5px;
+  background: rgba(20, 20, 20, 0.92);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1.45;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  white-space: nowrap;
+}
+
+.violin-tooltip[hidden] {
+  display: none;
+}

@@ -195,7 +195,7 @@ export function createContentBox(contentController, plotController) {
 
   const helperText = document.createElement("div");
   helperText.className = "contentbox-helper";
-  helperText.textContent = "Toggle labels to filter the matrix.";
+  helperText.textContent = "Toggle labels to filter every linked plot: matrix, parallel coordinates, tornado, box & violin, and heatmap.";
 
   const buttonRow = document.createElement("div");
   buttonRow.className = "contentbox-actions";

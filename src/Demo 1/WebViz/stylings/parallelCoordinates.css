@@ -37,10 +37,12 @@
 
 .parallel-svg {
   display: block;
-  min-width: 980px;
+  min-width: 720px;
   width: 100%;
   height: auto;
   position: relative;
+  /* Axes/labels only: let clicks reach the canvas underneath for click-to-select. */
+  pointer-events: none;
 }
 
 .parallel-line {

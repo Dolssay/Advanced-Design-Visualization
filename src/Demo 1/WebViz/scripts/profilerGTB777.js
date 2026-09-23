@@ -74,7 +74,7 @@ function attachFilterNotice(profiler, contentController, sampleCount) {
     profiler.setNotice(
       selected === total
         ? null
-        : `Label filter is active in the matrix only. These curves still come from the fit over all ${sampleCount} designs.`
+        : `Label filter applies to the linked plots above only. These curves still come from the fit over all ${sampleCount} designs.`
     );
   }
 

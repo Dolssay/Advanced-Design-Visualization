@@ -2,7 +2,9 @@ import { loadGTB777Data } from "./scripts/filteredGTB777.js";
 import { createScatterplotMatrix } from "./scripts/splomGTB777.js";
 import { createParallelCoordinates } from "./scripts/parallelCoordinates.js";
 import { createTornadoPlot } from "./scripts/tornadoPlot.js";
-import { createContentController } from "./scripts/contentbox.js";
+import { createBoxViolinPlot } from "./scripts/boxViolinPlot.js";
+import { createHeatmapPlot } from "./scripts/heatmapPlot.js";
+import { createContentController, createContentBox } from "./scripts/contentbox.js";
 import { createToolController, createToolsBar } from "./scripts/tools.js";
 import { createPlotSection, createTitleTab } from "./scripts/tiltleTab.js";
 import { createGTB777Profiler, createGTB777ProfilerModel } from "./scripts/profilerGTB777.js";
@@ -10,11 +12,21 @@ import { createGTB777Profiler, createGTB777ProfilerModel } from "./scripts/profi
 const app = document.getElementById("app");
 const controller = createToolController();
 
-const PLOTS = [
+// Plots that react to the Content box (label filter and/or highlighted points) come
+// first and share one layout column with the sticky Content box on their right.
+// Plots that ignore it (the profiler always uses the fit over all designs) follow
+// below at full width.
+const LINKED_PLOTS = [
   { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" },
   { id: "plot-parallel-coordinates", title: "Parallel Coordinates" },
-  { id: "plot-prediction-profiler", title: "Prediction Profiler" },
+  { id: "plot-box-violin", title: "Box & Violin by Label" },
+  { id: "plot-heatmap", title: "Design-Space Heatmap" },
+  // Filter-only: reacts to the label filter but not to highlighted points.
   { id: "plot-tornado", title: "Tornado Plot" }
+];
+
+const STANDALONE_PLOTS = [
+  { id: "plot-prediction-profiler", title: "Prediction Profiler" }
 ];
 
 async function init() {
@@ -30,37 +42,44 @@ async function init() {
     const shell = document.createElement("div");
     shell.className = "webviz-shell";
 
-    const plots = [
-      createPlotSection({
-        id: PLOTS[0].id,
-        title: PLOTS[0].title,
-        node: createScatterplotMatrix( data, controller, contentController)
-      }),
-      createPlotSection({
-        id: PLOTS[1].id,
-        title: PLOTS[1].title,
-        node: createParallelCoordinates(data, controller, contentController)
-      }),
-      createPlotSection({
-        id: PLOTS[2].id,
-        title: PLOTS[2].title,
-        node: createGTB777Profiler(data, controller, contentController, profilerModel)
-      }),
-      createPlotSection({
-        id: PLOTS[3].id,
-        title: PLOTS[3].title,
-        node: createTornadoPlot(
-          data,
-          contentController,
-          profilerModel
-        )
-      }),
-    ];
+    const linkedNodes = {
+      "plot-scatterplot-matrix": () => createScatterplotMatrix(data, controller, contentController),
+      "plot-parallel-coordinates": () => createParallelCoordinates(data, controller, contentController),
+      "plot-tornado": () => createTornadoPlot(data, contentController, profilerModel),
+      "plot-box-violin": () => createBoxViolinPlot(data, controller, contentController),
+      "plot-heatmap": () => createHeatmapPlot(data, controller, contentController)
+    };
 
-    shell.append(createToolsBar(controller), ...plots);
+    const standaloneNodes = {
+      "plot-prediction-profiler": () =>
+        createGTB777Profiler(data, controller, contentController, profilerModel)
+    };
+
+    const linkedGroup = document.createElement("div");
+    linkedGroup.className = "webviz-linked-group";
+
+    const linkedColumn = document.createElement("div");
+    linkedColumn.className = "webviz-linked-plots";
+    linkedColumn.append(
+      ...LINKED_PLOTS.map((plot) =>
+        createPlotSection({ id: plot.id, title: plot.title, node: linkedNodes[plot.id]() })
+      )
+    );
+
+    const contentColumn = document.createElement("div");
+    contentColumn.className = "webviz-content-column";
+    contentColumn.appendChild(createContentBox(contentController, controller));
+
+    linkedGroup.append(linkedColumn, contentColumn);
+
+    const standaloneSections = STANDALONE_PLOTS.map((plot) =>
+      createPlotSection({ id: plot.id, title: plot.title, node: standaloneNodes[plot.id]() })
+    );
+
+    shell.append(createToolsBar(controller), linkedGroup, ...standaloneSections);
 
     page.append(
-      createTitleTab(PLOTS),
+      createTitleTab([...LINKED_PLOTS, ...STANDALONE_PLOTS]),
       shell
     );
 

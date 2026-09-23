@@ -62,9 +62,13 @@ export function createParallelCoordinates(data, controller = null, contentContro
     const orderDelta = (drawOrder[a.Label] ?? 99) - (drawOrder[b.Label] ?? 99);
     return orderDelta || String(a.Label ?? "").localeCompare(String(b.Label ?? ""));
   });
-  const width = 1180;
-  const height = 570;
-  const margin = { top: 54, right: 34, bottom: 92, left: 34 };
+  const width = 1060;
+  const height = 560;
+  // Axis titles are rotated -32deg, so they rise up and to the right of their axis.
+  // The top margin holds the tallest title ("Block Fuel (1000 lbm)") and the right
+  // margin holds the last one, so neither is clipped by the frame; the bottom only
+  // needs room for the lowest tick label.
+  const margin = { top: 112, right: 112, bottom: 28, left: 44 };
   const innerWidth = width - margin.left - margin.right;
   const innerHeight = height - margin.top - margin.bottom;
   const color = d3.scaleOrdinal(colorDomain, colorRange);

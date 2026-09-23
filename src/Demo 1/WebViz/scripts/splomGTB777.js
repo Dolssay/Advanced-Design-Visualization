@@ -1,5 +1,4 @@
 import { zoomablePlot } from "./zoomablePlot.js";
-import { createContentBox } from "./contentbox.js";
 import { createGTB777Sketch } from "./sketchGTB777.js";
 
 const drawOrder = {
@@ -131,8 +130,8 @@ export function createScatterplotMatrix(data, controller, contentController = nu
   main.append(header, grid, createLegend());
   layout.append(main);
 
+  // The Content box itself is created once in main.js and shared by every linked plot.
   if (contentController) {
-    layout.appendChild(createContentBox(contentController, controller));
     contentController.subscribe((event) => {
       if (event.type !== "labels") {
         return;

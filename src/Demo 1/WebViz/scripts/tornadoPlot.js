@@ -1,3 +1,5 @@
+import { createGTB777ProfilerModel } from "./profilerGTB777.js";
+
 const DESIGN_VARIABLES = [
   {
     key: "ARHT",
@@ -62,74 +64,60 @@ const DESIGN_VARIABLES = [
 const OBJECTIVES = [
   {
     key: "Cruise CD (count)",
-    label: "Cruise CD"
+    label: "Cruise CD",
+    unit: "counts"
   },
   {
     key: "OEW (1000 lbm)",
-    label: "OEW"
+    label: "OEW",
+    unit: "1000 lbm"
   },
   {
     key: "Block Fuel (1000 lbm)",
-    label: "Block Fuel"
+    label: "Block Fuel",
+    unit: "1000 lbm"
   }
 ];
 
-function numericPairs(data, xKey, yKey) {
-  return data
-    .map((row) => ({
-      x: Number(row[xKey]),
-      y: Number(row[yKey])
-    }))
-    .filter(
-      (point) =>
-        Number.isFinite(point.x) &&
-        Number.isFinite(point.y)
-    );
+// Fit a fresh model when the label filter narrows the data. Cached by the
+// label selection so toggling objectives does not refit.
+const MIN_ROWS_FOR_FIT = DESIGN_VARIABLES.length + 2;
+
+function baselineValues() {
+  const values = {};
+  for (const variable of DESIGN_VARIABLES) {
+    values[variable.key] = variable.baseline;
+  }
+  return values;
 }
 
-function calculateSlope(data, xKey, yKey) {
-  const pairs = numericPairs(data, xKey, yKey);
+// True one-at-a-time sensitivity: every variable is swept to its min and max
+// while all others stay at baseline, using the jointly fitted model shared
+// with the Prediction Profiler. A per-variable univariate slope would instead
+// absorb the effect of any correlated variable (e.g. SHT leaking into ETAEI).
+function calculateSensitivity(model, objectiveKey) {
+  const baseline = baselineValues();
+  const baselinePrediction = model.predict(objectiveKey, baseline);
 
-  if (pairs.length < 2) {
-    return 0;
-  }
-
-  const meanX = d3.mean(pairs, (point) => point.x);
-  const meanY = d3.mean(pairs, (point) => point.y);
-
-  let numerator = 0;
-  let denominator = 0;
-
-  for (const point of pairs) {
-    const dx = point.x - meanX;
-
-    numerator += dx * (point.y - meanY);
-    denominator += dx * dx;
-  }
-
-  return denominator === 0
-    ? 0
-    : numerator / denominator;
-}
-
-function calculateSensitivity(data, objectiveKey) {
-  return DESIGN_VARIABLES
+  const variables = DESIGN_VARIABLES
     .map((variable) => {
-      const slope = calculateSlope(
-        data,
-        variable.key,
-        objectiveKey
-      );
+      const lowPrediction = model.predict(objectiveKey, {
+        ...baseline,
+        [variable.key]: variable.min
+      });
 
-      const lowImpact =
-        slope * (variable.min - variable.baseline);
+      const highPrediction = model.predict(objectiveKey, {
+        ...baseline,
+        [variable.key]: variable.max
+      });
 
-      const highImpact =
-        slope * (variable.max - variable.baseline);
+      const lowImpact = lowPrediction - baselinePrediction;
+      const highImpact = highPrediction - baselinePrediction;
 
       return {
         ...variable,
-        slope,
+        lowPrediction,
+        highPrediction,
         lowImpact,
         highImpact,
         magnitude: Math.max(
@@ -139,11 +127,19 @@ function calculateSensitivity(data, objectiveKey) {
       };
     })
     .sort((a, b) => b.magnitude - a.magnitude);
+
+  return { baselinePrediction, variables };
+}
+
+function formatSigned(value) {
+  const text = Math.abs(value) < 5e-5 ? "0.0000" : value.toFixed(4);
+  return value > 0 && text !== "0.0000" ? `+${text}` : text;
 }
 
 export function createTornadoPlot(
   data,
-  contentController = null
+  contentController = null,
+  sharedModel = null
 ) {
   const width = 900;
   const height = 520;
@@ -174,7 +170,7 @@ export function createTornadoPlot(
   const subtitle = document.createElement("div");
   subtitle.className = "tornado-subtitle";
   subtitle.textContent =
-    "One-at-a-time sensitivity of the selected objective to each design variable.";
+    "Model-based one-at-a-time sensitivity of the selected objective to each design variable.";
 
   header.append(title, subtitle);
 
@@ -246,12 +242,52 @@ export function createTornadoPlot(
     tooltip
   );
 
+  const modelCache = new Map();
+
   function getVisibleData() {
     if (contentController) {
       return contentController.getFilteredData(data);
     }
 
     return data;
+  }
+
+  function isFilterActive() {
+    if (!contentController) {
+      return false;
+    }
+
+    return (
+      contentController.getSelectedLabels().size !==
+      contentController.getLabels().length
+    );
+  }
+
+  // Unfiltered: reuse the Prediction Profiler's model so both plots agree.
+  // Filtered: refit on the selected labels so the bars describe that subset.
+  function getModel(visibleData) {
+    const cacheKey = isFilterActive()
+      ? [...contentController.getSelectedLabels()].sort().join("|")
+      : "__all__";
+
+    if (modelCache.has(cacheKey)) {
+      return modelCache.get(cacheKey);
+    }
+
+    let model = null;
+
+    if (cacheKey === "__all__" && sharedModel) {
+      model = sharedModel;
+    } else if (visibleData.length >= MIN_ROWS_FOR_FIT) {
+      try {
+        model = createGTB777ProfilerModel(visibleData);
+      } catch (error) {
+        console.warn("Tornado plot: model fit failed.", error);
+      }
+    }
+
+    modelCache.set(cacheKey, model);
+    return model;
   }
 
   function render() {
@@ -267,15 +303,11 @@ export function createTornadoPlot(
 
     const visibleData = getVisibleData();
 
-    const sensitivity =
-      calculateSensitivity(
-        visibleData,
-        objective.key
-      );
-
     chart.selectAll("*").remove();
 
-    if (!visibleData.length) {
+    const model = getModel(visibleData);
+
+    if (!model) {
       chart
         .append("text")
         .attr("x", innerWidth / 2)
@@ -283,14 +315,23 @@ export function createTornadoPlot(
         .attr("text-anchor", "middle")
         .attr("class", "tornado-empty")
         .text(
-          "No data available for the current filter."
+          visibleData.length
+            ? `Too few designs to fit a model (${visibleData.length}; need ${MIN_ROWS_FOR_FIT}).`
+            : "No data available for the current filter."
         );
 
       subtitle.textContent =
-        `0 designs analyzed — ${objective.label} sensitivity.`;
+        `${visibleData.length.toLocaleString()} designs analyzed — ${objective.label} sensitivity.`;
 
       return;
     }
+
+    const {
+      baselinePrediction,
+      variables: sensitivity
+    } = calculateSensitivity(model, objective.key);
+
+    const r2 = model.getR2?.(objective.key);
 
     const allImpacts =
       sensitivity.flatMap((variable) => [
@@ -416,8 +457,10 @@ export function createTornadoPlot(
             Minimum: ${variable.min}<br>
             Baseline: ${variable.baseline}<br>
             Maximum: ${variable.max}<br>
-            Low impact: ${variable.lowImpact.toFixed(4)}<br>
-            High impact: ${variable.highImpact.toFixed(4)}
+            Low impact: ${formatSigned(variable.lowImpact)} ${objective.unit}<br>
+            High impact: ${formatSigned(variable.highImpact)} ${objective.unit}<br>
+            <span class="tornado-tooltip-note">${objective.label} at min / baseline / max:
+            ${variable.lowPrediction.toFixed(2)} / ${baselinePrediction.toFixed(2)} / ${variable.highPrediction.toFixed(2)}</span>
           `;
         }
       )
@@ -478,7 +521,7 @@ export function createTornadoPlot(
       .attr("y", innerHeight + 50)
       .attr("text-anchor", "middle")
       .text(
-        `Estimated change in ${objective.label}`
+        `Predicted change in ${objective.label} (${objective.unit}) from baseline, other variables held at baseline`
       );
 
     const legend = svg
@@ -492,7 +535,7 @@ export function createTornadoPlot(
         `translate(${
           margin.left +
           innerWidth -
-          180
+          250
         },15)`
       );
 
@@ -517,19 +560,28 @@ export function createTornadoPlot(
         "class",
         "tornado-legend-high"
       )
-      .attr("x", 110)
+      .attr("x", 135)
       .attr("width", 14)
       .attr("height", 14);
 
     legend
       .append("text")
-      .attr("x", 130)
+      .attr("x", 155)
       .attr("y", 12)
       .text("Variable maximum");
 
+    const fitNote = Number.isFinite(r2)
+      ? ` · fit R² = ${r2.toFixed(4)}`
+      : "";
+
+    const scopeNote = isFilterActive()
+      ? " (model refit on selected labels)"
+      : "";
+
     subtitle.textContent =
-      `${visibleData.length.toLocaleString()} designs analyzed — ` +
-      `${objective.label} sensitivity.`;
+      `${visibleData.length.toLocaleString()} designs analyzed${scopeNote} — ` +
+      `${objective.label} sensitivity around baseline ` +
+      `${baselinePrediction.toFixed(2)} ${objective.unit}${fitNote}.`;
   }
 
   objectiveSelect.addEventListener(

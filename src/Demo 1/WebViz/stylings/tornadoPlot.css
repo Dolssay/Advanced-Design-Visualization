@@ -136,3 +136,9 @@
   font-size: 14px;
   fill: #777;
 }
+
+.tornado-tooltip-note {
+  display: inline-block;
+  margin-top: 4px;
+  color: #ccc;
+}

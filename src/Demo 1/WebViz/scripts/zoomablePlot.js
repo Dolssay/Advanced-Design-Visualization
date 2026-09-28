@@ -398,7 +398,11 @@ export function zoomablePlot({
   function render() {
     renderQueued = false;
     const { xScale, yScale } = getScales();
-    canvasContext.clearRect(0, 0, width, height);
+    // The canvas backing store is width*pixelRatio x height*pixelRatio device pixels.
+    // Clear the whole backing store with an identity transform; clearing only
+    // width x height left stale strips on the right/bottom whenever devicePixelRatio > 1.
+    canvasContext.setTransform(1, 0, 0, 1, 0, 0);
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
     drawAxes(canvasContext, xScale, yScale);
     drawPoints(canvasContext, xScale, yScale);
 

@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>eVTOL Sizing · Demo 2</title>
+  <link rel="icon" href="data:;base64," />
+  <link rel="stylesheet" href="./stylings/demo2.css" />
+  <link rel="stylesheet" href="./stylings/charts.css" />
+</head>
+<body>
+  <div id="app" class="d2">
+    <header class="d2-header">
+      <div>
+        <a class="d2-back" href="../">← All demos</a>
+        <h1>eVTOL sizing</h1>
+        <p class="d2-sub">Change the design on the left, size it with evtolpy on the server, then explore around it.</p>
+      </div>
+      <span id="status-chip" class="chip chip-pending">Connecting…</span>
+    </header>
+
+    <div class="d2-layout">
+      <aside class="d2-panel" aria-label="Design inputs">
+        <label class="field-label" for="baseline-select">Baseline aircraft</label>
+        <select id="baseline-select" class="select"></select>
+        <div id="param-form" class="param-form"></div>
+        <ul id="constraint-warnings" class="warnings" aria-live="polite"></ul>
+        <div class="panel-actions">
+          <button id="size-button" class="btn btn-primary" type="button">Size design</button>
+          <button id="reset-button" class="btn" type="button">Reset to baseline</button>
+        </div>
+        <p class="hint">Ctrl + Enter also sizes the design.</p>
+      </aside>
+
+      <main class="d2-main">
+        <nav class="tabs" role="tablist" aria-label="Views">
+          <button class="tab is-active" role="tab" data-view="result" aria-selected="true">Result</button>
+          <button class="tab" role="tab" data-view="sweep" aria-selected="false">Parameter sweep</button>
+          <button class="tab" role="tab" data-view="sensitivity" aria-selected="false">Sensitivity</button>
+          <button class="tab" role="tab" data-view="ensemble" aria-selected="false">Ensemble</button>
+        </nav>
+        <section id="view-result" class="view is-active" role="tabpanel"></section>
+        <section id="view-sweep" class="view" role="tabpanel" hidden></section>
+        <section id="view-sensitivity" class="view" role="tabpanel" hidden></section>
+        <section id="view-ensemble" class="view" role="tabpanel" hidden></section>
+      </main>
+    </div>
+  </div>
+  <script type="module" src="./main.js"></script>
+</body>
+</html>

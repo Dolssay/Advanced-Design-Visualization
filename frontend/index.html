@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Advanced Design Visualization</title>
+  <link rel="icon" href="data:;base64," />
+  <link rel="stylesheet" href="./shared/landing.css" />
+</head>
+<body>
+  <main class="landing">
+    <header>
+      <p class="eyebrow">IDOPt Lab · Virginia Tech</p>
+      <h1>Advanced Design Visualization</h1>
+      <p class="lede">Interactive tools for exploring complex aircraft design spaces.</p>
+    </header>
+
+    <ul class="demo-list">
+      <li>
+        <a class="demo-card" href="./demo1/">
+          <span class="demo-tag">Demo 1 · static</span>
+          <span class="demo-title">GTB777 horizontal-tail ensemble</span>
+          <span class="demo-text">Scatterplot matrix, parallel coordinates, heatmap, tornado and profiler over 42,630 pre-computed designs.</span>
+        </a>
+      </li>
+      <li>
+        <a class="demo-card" href="./demo2/">
+          <span class="demo-tag">Demo 2 · live backend</span>
+          <span class="demo-title">eVTOL sizing with evtolpy</span>
+          <span class="demo-text">Change an Archer Midnight-class design, size it on the server, sweep a parameter, and rank input sensitivity.</span>
+        </a>
+      </li>
+      <li>
+        <div class="demo-card is-planned" aria-disabled="true">
+          <span class="demo-tag">Demo 3 · planned</span>
+          <span class="demo-title">F-16 multi-fidelity sizing</span>
+          <span class="demo-text">Demo 2's workflow with a fidelity selector backed by MATLAB models.</span>
+        </div>
+      </li>
+    </ul>
+
+    <footer class="api-status">
+      <span id="api-status">Checking backend…</span>
+      · <a href="/api/docs">API docs</a>
+    </footer>
+  </main>
+  <script type="module">
+    import { API } from "./shared/api/endpoints.js";
+    import { apiGet } from "./shared/api/client.js";
+    const el = document.getElementById("api-status");
+    apiGet(API.info, { timeoutMs: 5000 })
+      .then((info) => { el.textContent = `Backend ${info.version} ${info.ready ? "ready" : "starting"} · evtolpy ${info.evtolpy_sha}`; })
+      .catch(() => { el.textContent = "Backend not reachable (Demo 1 still works)"; });
+  </script>
+</body>
+</html>

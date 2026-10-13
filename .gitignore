@@ -1,11 +1,19 @@
-# Python bytecode files
+# Python
 __pycache__/
 *.pyc
-# Artifact folder
-output/*
-# Data files
-data/*
+.pytest_cache/
+.venv/
+venv/
+
+# Batch pipeline output (python -m pipelines.ensemble)
+output/
+
+# Node / Vite
+node_modules/
+frontend/dist/
+
+# Raw data stays local; the demos' own data is tracked explicitly below.
+/data/*
 *.png
 *.csv
-# npm packages
-node_modules/
+!frontend/public/data/GTB777.csv

@@ -1,0 +1,19 @@
+{
+  "name": "adv-viz-frontend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Frontend for the Advanced Design Visualization demos (Vite multi-page app)",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "d3": "7.9.0"
+  },
+  "devDependencies": {
+    "vite": "5.4.21"
+  }
+}

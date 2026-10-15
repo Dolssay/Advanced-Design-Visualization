@@ -1,0 +1,184 @@
+/* Chart roles. Series colors are slots 1-2 of the validated reference palette
+   (blue, orange), which pass the colorblind-separation checks as a pair. */
+.chart {
+  --surface-1: #ffffff;
+  --text-primary: #1f1f1f;
+  --text-secondary: #5a5955;
+  --grid: #ececea;
+  --axis: #b9b8b3;
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --fail: #3b3a37;
+
+  position: relative;
+  margin-top: 12px;
+  background: var(--surface-1);
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 4px 4px;
+}
+
+.viz {
+  display: block;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+}
+
+.viz .axis text,
+.viz .row-label {
+  fill: var(--text-secondary);
+  font-size: 12px;
+}
+
+.viz .row-label {
+  fill: var(--text-primary);
+  font-size: 12.5px;
+}
+
+.viz .axis-line,
+.viz .tick-line {
+  stroke: var(--axis);
+}
+
+.viz .grid line {
+  stroke: var(--grid);
+}
+
+.viz .axis-title {
+  fill: var(--text-secondary);
+  font-size: 12px;
+}
+
+.viz .series-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.viz .series-line.s1 { stroke: var(--series-1); }
+
+.viz .dot {
+  stroke: var(--surface-1);
+  stroke-width: 2;
+}
+
+.viz .dot.s1 { fill: var(--series-1); }
+
+.viz .dot-scatter {
+  fill-opacity: 0.85;
+  cursor: pointer;
+}
+
+.viz .dot-scatter.is-hover {
+  fill-opacity: 1;
+  stroke: var(--text-primary);
+}
+
+.viz .bar.s1 { fill: var(--series-1); }
+.viz .bar.s2 { fill: var(--series-2); }
+
+.viz .fail-mark {
+  fill: var(--fail);
+}
+
+.viz .fail-text {
+  fill: var(--fail);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.viz .strip-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+}
+
+.viz .ref-line {
+  stroke: var(--text-secondary);
+  stroke-dasharray: 4 4;
+}
+
+.viz .ref-label {
+  fill: var(--text-secondary);
+  font-size: 11px;
+}
+
+.viz .zero-line {
+  stroke: var(--text-primary);
+  stroke-width: 1;
+}
+
+.viz .focus-ring {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.viz .hit-area {
+  fill: transparent;
+  cursor: pointer;
+}
+
+.viz-tooltip {
+  position: absolute;
+  z-index: 5;
+  max-width: 320px;
+  padding: 8px 10px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #1f1f1f;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+}
+
+.viz-tooltip .tip-hint {
+  color: #2a78d6;
+}
+
+.viz-tooltip .tip-small {
+  color: #555;
+  font-size: 11.5px;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: #444;
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.swatch {
+  width: 14px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.swatch.s1 { background: #2a78d6; }
+.swatch.s2 { background: #eb6834; }
+
+.legend-x {
+  font-weight: 700;
+  color: #3b3a37;
+}
+
+/* Decorations never block the hover/click layers underneath. */
+.viz .zero-line,
+.viz .ref-line,
+.viz .ref-label,
+.viz .strip-label,
+.viz .fail-text,
+.viz .fail-mark {
+  pointer-events: none;
+}

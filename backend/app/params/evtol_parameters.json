@@ -1,0 +1,133 @@
+{
+  "version": 1,
+  "source": "Bounds from the LHS study (pipelines/lhs.py). Steps are first guesses until the M5 sensitivity study refines them.",
+  "groups": ["Mission", "Geometry", "Propulsion", "Battery"],
+  "parameters": [
+    {
+      "key": "payload_kg",
+      "label": "Payload",
+      "unit": "kg",
+      "group": "Mission",
+      "section": "aircraft",
+      "min": 400, "max": 500, "step": 5,
+      "integer": false,
+      "description": "Passenger and cargo mass carried on the design mission."
+    },
+    {
+      "key": "cruise_s",
+      "label": "Cruise time",
+      "unit": "s",
+      "group": "Mission",
+      "section": "mission",
+      "min": 1700, "max": 2100, "step": 25,
+      "integer": false,
+      "description": "Duration of the cruise segment. (Labelled 'Cruise Speed (m/s)' in the old ensemble script; it is a time.)"
+    },
+    {
+      "key": "reserve_cruise_s",
+      "label": "Reserve cruise time",
+      "unit": "s",
+      "group": "Mission",
+      "section": "mission",
+      "min": 100, "max": 125, "step": 1,
+      "integer": false,
+      "description": "Duration of the reserve cruise segment."
+    },
+    {
+      "key": "wingspan_m",
+      "label": "Wingspan",
+      "unit": "m",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 12.2, "max": 17, "step": 0.1,
+      "integer": false,
+      "description": "Tip-to-tip wing span."
+    },
+    {
+      "key": "d_value_m",
+      "label": "D-value",
+      "unit": "m",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 9, "max": 17, "step": 0.1,
+      "integer": false,
+      "description": "Largest overall dimension of the aircraft footprint."
+    },
+    {
+      "key": "fuselage_l_m",
+      "label": "Fuselage length",
+      "unit": "m",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 8, "max": 10, "step": 0.1,
+      "integer": false,
+      "description": "Fuselage length."
+    },
+    {
+      "key": "fuselage_w_m",
+      "label": "Fuselage width",
+      "unit": "m",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 1.4, "max": 1.8, "step": 0.05,
+      "integer": false,
+      "description": "Fuselage width."
+    },
+    {
+      "key": "horiz_tail_vol_coeff",
+      "label": "Horizontal tail volume coeff.",
+      "unit": "",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 0.6, "max": 0.8, "step": 0.01,
+      "integer": false,
+      "description": "Horizontal tail volume coefficient."
+    },
+    {
+      "key": "vert_tail_vol_coeff",
+      "label": "Vertical tail volume coeff.",
+      "unit": "",
+      "group": "Geometry",
+      "section": "aircraft",
+      "min": 0.04, "max": 0.06, "step": 0.002,
+      "integer": false,
+      "description": "Vertical tail volume coefficient."
+    },
+    {
+      "key": "lift_rotor_count",
+      "label": "Rotors per type (lift = tilt)",
+      "unit": "count",
+      "group": "Propulsion",
+      "section": "propulsion",
+      "min": 5, "max": 7, "step": 1,
+      "integer": true,
+      "description": "Lift rotor count. Tilt rotor count is set equal (C5) and total rotor count is lift + tilt (C4)."
+    },
+    {
+      "key": "rotor_diameter_m",
+      "label": "Rotor diameter",
+      "unit": "m",
+      "group": "Propulsion",
+      "section": "propulsion",
+      "min": 1.8, "max": 2.3, "step": 0.05,
+      "integer": false,
+      "description": "Diameter of each rotor."
+    },
+    {
+      "key": "batt_spec_energy_w_h_p_kg",
+      "label": "Battery specific energy",
+      "unit": "Wh/kg",
+      "group": "Battery",
+      "section": "power",
+      "min": 230, "max": 285, "step": 5,
+      "integer": false,
+      "description": "Pack-level battery specific energy."
+    }
+  ],
+  "constraints": [
+    {"id": "C1", "text": "Wingspan must not exceed the D-value."},
+    {"id": "C2", "text": "Fuselage length must be at least the fuselage width."},
+    {"id": "C3", "text": "Fuselage length must not exceed the D-value."},
+    {"id": "C6", "text": "Lift rotors must fit the span: diameter x count + (count - 2) x 0.1 m <= wingspan."}
+  ]
+}

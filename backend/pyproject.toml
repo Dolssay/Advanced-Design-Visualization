@@ -1,0 +1,10 @@
+[project]
+name = "adv-viz-backend"
+version = "0.1.0"
+description = "FastAPI backend for the Advanced Design Visualization demos"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+# backend/ and backend/evtolpy/ on sys.path, the same as PYTHONPATH in the Dockerfile.
+pythonpath = [".", "evtolpy"]
+testpaths = ["tests"]

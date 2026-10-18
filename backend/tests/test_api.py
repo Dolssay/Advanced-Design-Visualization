@@ -67,10 +67,10 @@ def test_size_errors(client):
 
 def test_sweep(client):
     body = client.post("/api/v1/evtol/sweep", json={
-        "parameter": "batt_spec_energy_w_h_p_kg", "start": 230, "stop": 285, "step": 5,
+        "parameter": "batt_spec_energy_w_h_p_kg", "start": 240, "stop": 300, "step": 5,
     }).json()
     values = [p["value"] for p in body["points"]]
-    assert values == list(range(230, 286, 5))
+    assert values == list(range(240, 301, 5))
     mtows = [p["mtow_kg"] for p in body["points"]]
     assert all(m is not None for m in mtows)
     assert mtows == sorted(mtows, reverse=True)  # better batteries -> lighter aircraft

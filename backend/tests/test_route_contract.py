@@ -24,9 +24,14 @@ def _frontend_paths() -> set[str]:
     return {re.sub(r"\$\{(?:\w+\()?(\w+)\)?\}", r"{\1}", p) for p in raw}
 
 
+def _backend_paths() -> set[str]:
+    # The OpenAPI document is stable across FastAPI releases; app.routes is not.
+    return {p for p in create_app().openapi()["paths"] if p.startswith(paths.API_V1)}
+
+
 @pytest.mark.skipif(not ENDPOINTS_JS.exists(), reason="frontend not checked out next to backend")
 def test_frontend_calls_only_declared_routes():
-    backend = {route.path for route in create_app().routes if route.path.startswith(paths.API_V1)}
+    backend = _backend_paths()
     frontend = _frontend_paths()
     assert frontend, "no /api paths found in endpoints.js"
     assert frontend <= backend, f"frontend calls undeclared routes: {sorted(frontend - backend)}"
@@ -34,6 +39,6 @@ def test_frontend_calls_only_declared_routes():
 
 @pytest.mark.skipif(not ENDPOINTS_JS.exists(), reason="frontend not checked out next to backend")
 def test_every_api_route_has_a_frontend_name():
-    backend = {route.path for route in create_app().routes if route.path.startswith(paths.API_V1)}
+    backend = _backend_paths()
     missing = backend - _frontend_paths()
     assert not missing, f"backend routes with no entry in endpoints.js: {sorted(missing)}"

@@ -30,15 +30,14 @@ def info(request: Request) -> dict:
     """Who am I: versions, readiness and the list of API routes."""
     state = request.app.state
     settings = state.settings
-    api_routes = sorted(
-        {
-            (method, route.path)
-            for route in request.app.routes
-            if getattr(route, "path", "").startswith(paths.API_V1)
-            for method in getattr(route, "methods", set()) - {"HEAD", "OPTIONS"}
-        },
-        key=lambda r: (r[1], r[0]),
-    )
+    # From the OpenAPI document rather than app.routes, whose shape changes
+    # between FastAPI releases (newer ones nest included routers).
+    api_routes = sorted((
+        (method.upper(), path)
+        for path, operations in request.app.openapi()["paths"].items()
+        if path.startswith(paths.API_V1)
+        for method in operations
+    ), key=lambda r: (r[1], r[0]))
     return {
         "name": "Advanced Design Visualization API",
         "version": settings.app_version,

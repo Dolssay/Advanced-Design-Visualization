@@ -21,6 +21,7 @@ from app.services.evtol_model import (
     size_design,
     size_summary,
 )
+from app.services.ensemble import build_payload, sample_inputs
 from app.services.runner import SizingTimeout
 from app.services.store import run_id_for
 
@@ -242,34 +243,13 @@ async def sensitivity(body: SensitivityRequest, request: Request) -> dict:
 
 @router.post(paths.EVTOL_ENSEMBLE)
 async def ensemble(body: EnsembleRequest, request: Request) -> dict:
-    """Latin Hypercube ensemble, the interactive version of pipelines/ensemble.py."""
-    from pipelines.lhs import NAMES, lhs_repair
-
+    """Latin Hypercube ensemble, the interactive version of pipelines/precompute_ensemble.py."""
     state = request.app.state
     if body.n_samples > state.settings.max_ensemble_samples:
         raise HTTPException(422, {"code": "too_many_samples",
                                   "message": f"Limit is {state.settings.max_ensemble_samples} samples."})
     base = _baseline(request, body.baseline)
-    index = catalogue_index(state.catalogue)
-    samples = lhs_repair(n_samples=body.n_samples, seed=body.seed)
-
-    inputs = []
-    for row in samples:
-        values = dict(zip(NAMES, row))
-        inputs.append({k: (int(v) if index[k]["integer"] else round(float(v), 4))
-                       for k, v in values.items() if k in index})
+    inputs = sample_inputs(state.catalogue, body.n_samples, body.seed)
     configs = [_apply(request, base, overrides, enforce_bounds=False) for overrides in inputs]
     summaries = await _map(request, size_summary, configs)
-
-    rows = [{"run": i + 1, **inp, **s} for i, (inp, s) in enumerate(zip(inputs, summaries))]
-    counts: dict[str, int] = {}
-    for s in summaries:
-        counts[s["status"]] = counts.get(s["status"], 0) + 1
-    return {
-        "baseline": body.baseline,
-        "seed": body.seed,
-        "inputs": [index[k] for k in inputs[0]] if inputs else [],
-        "outputs": SUMMARY_OUTPUTS,
-        "status_counts": counts,
-        "rows": rows,
-    }
+    return build_payload(body.baseline, body.seed, None, state.catalogue, inputs, summaries)

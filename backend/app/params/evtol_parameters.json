@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "source": "Bounds from the LHS study (pipelines/lhs.py). Steps are first guesses until the M5 sensitivity study refines them.",
+  "source": "min/max: study box for the example runs and ensembles, kept in sync with pipelines/lhs.py. Hand-picked (not from a study) around Archer Midnight; adjusted in Oct 2026 so ~98% of LHS samples close on Archer (was ~65%). limit_min/limit_max: slider range, about 0.25x to 2x the Archer Midnight value rounded to the step (reserve widened to cover the study box); a starting preset, not a physical limit. Steps are first guesses until the M5 sensitivity study refines them.",
   "groups": ["Mission", "Geometry", "Propulsion", "Battery"],
   "parameters": [
     {
@@ -9,7 +9,8 @@
       "unit": "kg",
       "group": "Mission",
       "section": "aircraft",
-      "min": 400, "max": 500, "step": 5,
+      "min": 350, "max": 550, "step": 5,
+      "limit_min": 115, "limit_max": 905,
       "integer": false,
       "description": "Passenger and cargo mass carried on the design mission."
     },
@@ -19,7 +20,8 @@
       "unit": "s",
       "group": "Mission",
       "section": "mission",
-      "min": 1700, "max": 2100, "step": 25,
+      "min": 1500, "max": 2100, "step": 25,
+      "limit_min": 475, "limit_max": 3800,
       "integer": false,
       "description": "Duration of the cruise segment. (Labelled 'Cruise Speed (m/s)' in the old ensemble script; it is a time.)"
     },
@@ -29,7 +31,8 @@
       "unit": "s",
       "group": "Mission",
       "section": "mission",
-      "min": 100, "max": 125, "step": 1,
+      "min": 100, "max": 300, "step": 5,
+      "limit_min": 30, "limit_max": 300,
       "integer": false,
       "description": "Duration of the reserve cruise segment."
     },
@@ -39,7 +42,8 @@
       "unit": "m",
       "group": "Geometry",
       "section": "aircraft",
-      "min": 12.2, "max": 17, "step": 0.1,
+      "min": 13, "max": 17, "step": 0.1,
+      "limit_min": 3.8, "limit_max": 30.5,
       "integer": false,
       "description": "Tip-to-tip wing span."
     },
@@ -49,7 +53,8 @@
       "unit": "m",
       "group": "Geometry",
       "section": "aircraft",
-      "min": 9, "max": 17, "step": 0.1,
+      "min": 13, "max": 17, "step": 0.1,
+      "limit_min": 3.8, "limit_max": 30.5,
       "integer": false,
       "description": "Largest overall dimension of the aircraft footprint."
     },
@@ -59,7 +64,8 @@
       "unit": "m",
       "group": "Geometry",
       "section": "aircraft",
-      "min": 8, "max": 10, "step": 0.1,
+      "min": 7.5, "max": 10, "step": 0.1,
+      "limit_min": 2.2, "limit_max": 18.0,
       "integer": false,
       "description": "Fuselage length."
     },
@@ -70,6 +76,7 @@
       "group": "Geometry",
       "section": "aircraft",
       "min": 1.4, "max": 1.8, "step": 0.05,
+      "limit_min": 0.40, "limit_max": 3.20,
       "integer": false,
       "description": "Fuselage width."
     },
@@ -80,6 +87,7 @@
       "group": "Geometry",
       "section": "aircraft",
       "min": 0.6, "max": 0.8, "step": 0.01,
+      "limit_min": 0.18, "limit_max": 1.40,
       "integer": false,
       "description": "Horizontal tail volume coefficient."
     },
@@ -90,6 +98,7 @@
       "group": "Geometry",
       "section": "aircraft",
       "min": 0.04, "max": 0.06, "step": 0.002,
+      "limit_min": 0.012, "limit_max": 0.100,
       "integer": false,
       "description": "Vertical tail volume coefficient."
     },
@@ -100,6 +109,7 @@
       "group": "Propulsion",
       "section": "propulsion",
       "min": 5, "max": 7, "step": 1,
+      "limit_min": 2, "limit_max": 12,
       "integer": true,
       "description": "Lift rotor count. Tilt rotor count is set equal (C5) and total rotor count is lift + tilt (C4)."
     },
@@ -110,6 +120,7 @@
       "group": "Propulsion",
       "section": "propulsion",
       "min": 1.8, "max": 2.3, "step": 0.05,
+      "limit_min": 0.50, "limit_max": 4.00,
       "integer": false,
       "description": "Diameter of each rotor."
     },
@@ -119,7 +130,8 @@
       "unit": "Wh/kg",
       "group": "Battery",
       "section": "power",
-      "min": 230, "max": 285, "step": 5,
+      "min": 240, "max": 300, "step": 5,
+      "limit_min": 65, "limit_max": 510,
       "integer": false,
       "description": "Pack-level battery specific energy."
     }

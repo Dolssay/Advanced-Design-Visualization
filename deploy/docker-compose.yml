@@ -9,6 +9,11 @@ services:
     image: adv-viz-backend:local
     environment:
       SIZING_WORKERS: "2"
+      PREBUILT_DIR: /srv/prebuilt
+    # Precomputed ensembles, so the demo opens with data. Generate them first:
+    #   cd backend && python -m pipelines.precompute_ensemble
+    volumes:
+      - ../backend/output/prebuilt:/srv/prebuilt:ro
     ports:
       - "8000:8000"
     healthcheck:

@@ -11,19 +11,25 @@ from scipy.stats import qmc
 
 # 1.  Define the 14 parameters
 #     Each entry: (name, low, high)
+#     A hand-picked example box around Archer Midnight, not the result of a study.
+#     Keep it in sync with min/max in app/params/evtol_parameters.json.
+#     Oct 2026: wingspan >= 13 m, battery >= 240 Wh/kg and D-value >= 13 m cut the
+#     LHS failure rate on Archer from ~35% to ~2% (narrow spans with many rotors
+#     and weak batteries were what diverged); payload, cruise, reserve and
+#     fuselage length were widened a little to cover more realistic missions.
 
-PARAMS = [('payload_kg', 400, 500), 
-          ('wingspan_m', 12.2, 17), 
-          ('d_value_m', 9, 17),
-          ('fuselage_l_m', 8, 10), 
+PARAMS = [('payload_kg', 350, 550),
+          ('wingspan_m', 13, 17),
+          ('d_value_m', 13, 17),
+          ('fuselage_l_m', 7.5, 10),
           ('fuselage_w_m', 1.4, 1.8),
-          ('horiz_tail_vol_coeff', 0.6, 0.8), 
+          ('horiz_tail_vol_coeff', 0.6, 0.8),
           ('vert_tail_vol_coeff', 0.04, 0.06),
-          ('cruise_s', 1700, 2100), 
-          ('reserve_cruise_s', 100, 125),
-          ('batt_spec_energy_w_h_p_kg', 230, 285),
+          ('cruise_s', 1500, 2100),
+          ('reserve_cruise_s', 100, 300),
+          ('batt_spec_energy_w_h_p_kg', 240, 300),
           # ('rotor_count', 10, 14), derived from lift + tilt, not sampled directly
-          ('lift_rotor_count', 5, 7), 
+          ('lift_rotor_count', 5, 7),
           ('tilt_rotor_count', 5, 7),
           ('rotor_diameter_m', 1.8, 2.3)]
 
@@ -44,9 +50,11 @@ IDX   = {name: i for i, name in enumerate(NAMES)}
 # 0.1m is the clearance for rotors
 
 # generate LHS samples
-def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
+def lhs_repair(n_samples: int, seed: int = 0, lows=None, highs=None) -> np.ndarray:
     """
     Generate `n_samples` satisfying all constraints via repair.
+
+    `lows`/`highs` (PARAMS order) sample a sub-box instead of the study box.
  
     Returns
     -------
@@ -54,8 +62,10 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
               rotor_count is derived and appended as column 13.
     """
     # Sample all 13 parameters via LHS
+    lows = LOWS if lows is None else np.asarray(lows, dtype=float)
+    highs = HIGHS if highs is None else np.asarray(highs, dtype=float)
     sampler = qmc.LatinHypercube(d=len(PARAMS), seed=seed)
-    s = qmc.scale(sampler.random(n=n_samples), LOWS, HIGHS)
+    s = qmc.scale(sampler.random(n=n_samples), lows, highs)
  
     #  Swap-repair inequalities
     swap_pairs = [
@@ -75,14 +85,14 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
     avg_rotor_type = (s[:, cl] + s[:, ct]) / 2.0
     rotor_type = np.clip(
         np.round(avg_rotor_type),
-        LOWS[IDX['lift_rotor_count']],
-        HIGHS[IDX['lift_rotor_count']],
+        lows[IDX['lift_rotor_count']],
+        highs[IDX['lift_rotor_count']],
     ).astype(int)
 
-    # Cap the rotor count so the 1.8 m diameter minimum remains feasible.
+    # Cap the rotor count so the minimum rotor diameter remains feasible.
     # For C6: wingspan >= rotor_type * d_min + (rotor_type - 2) * 0.1
     cd = IDX['rotor_diameter_m']
-    max_feasible_rotor_type = np.floor((s[:, IDX['wingspan_m']] + 0.2) / 1.9).astype(int)
+    max_feasible_rotor_type = np.floor((s[:, IDX['wingspan_m']] + 0.2) / (lows[cd] + 0.1)).astype(int)
     rotor_type = np.minimum(rotor_type, max_feasible_rotor_type)
     
     # Apply constraint 5: lift == tilt
@@ -107,8 +117,8 @@ def lhs_repair(n_samples: int, seed: int = 0) -> np.ndarray:
     # Using typical: m~2500kg (MTOW guess), g~9.81, DL_max~150 Pa
     # d_min ~ sqrt(4*2500*9.81 / (pi*6*150)) ~ 2.3 m
     
-    # Clamp diameter to [LOWS[cd], max_diam] to balance disk loading
-    s[:, cd] = np.clip(s[:, cd], LOWS[cd], max_diam)
+    # Clamp diameter to [lows[cd], max_diam] to balance disk loading
+    s[:, cd] = np.clip(s[:, cd], lows[cd], max_diam)
  
     #  Append rotor_count as a derived column (14th column)
     samples = np.column_stack([s, rotor.astype(float)])

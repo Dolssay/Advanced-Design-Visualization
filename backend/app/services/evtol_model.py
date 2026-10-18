@@ -47,6 +47,35 @@ class FastAircraft(Aircraft):
     power = property(lambda self: self._power)
     propulsion = property(lambda self: self._propulsion)
 
+    def __setattr__(self, name: str, value: Any) -> None:
+        # Any write (the MTOW iteration sets max_takeoff_mass_kg each step) drops
+        # the memoized geometry below.
+        self.__dict__.pop("_memo", None)
+        super().__setattr__(name, value)
+
+
+def _memoized(name: str) -> property:
+    """Cache one of evtolpy's derived geometry properties until the next write.
+
+    These depend only on the aircraft's own attributes and the constant environ,
+    but evtolpy recomputes them on every read: wing_area_m2 alone was read ~380k
+    times per Archer sizing, about two thirds of the run time.
+    """
+    compute = getattr(Aircraft, name).fget
+
+    def get(self):
+        memo = self.__dict__.setdefault("_memo", {})
+        if name not in memo:
+            memo[name] = compute(self)
+        return memo[name]
+
+    return property(get)
+
+
+for _name in ("wing_area_m2", "wing_mac_m", "wing_root_chord_m", "wing_aspect_ratio", "horiz_tail_area_m2",
+              "vert_tail_area_m2", "fuselage_fineness_ratio", "fuselage_wetted_area_m2"):
+    setattr(FastAircraft, _name, _memoized(_name))
+
 
 # --------------------------------------------------------------------------- catalogue
 

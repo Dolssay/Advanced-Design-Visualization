@@ -45,7 +45,7 @@ class Settings:
         )
     )
 
-    # Worker processes for sizing. One Archer Midnight sizing takes ~0.25 s.
+    # Worker processes for sizing. One Archer Midnight sizing takes ~0.1 s (no plots).
     sizing_workers: int = field(default_factory=lambda: _int("SIZING_WORKERS", min(4, os.cpu_count() or 1)))
     sizing_timeout_s: int = field(default_factory=lambda: _int("SIZING_TIMEOUT_S", 60))
     max_sweep_points: int = field(default_factory=lambda: _int("MAX_SWEEP_POINTS", 41))

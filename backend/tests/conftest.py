@@ -7,10 +7,10 @@ from app.main import create_app
 ARCHER_MTOW_KG = 3268.8  # regression value for the vendored evtolpy; update when the pin moves
 
 DIVERGING_DESIGN = {
-    "payload_kg": 500,
-    "batt_spec_energy_w_h_p_kg": 230,
+    "payload_kg": 550,
+    "batt_spec_energy_w_h_p_kg": 240,
     "cruise_s": 2100,
-    "wingspan_m": 12.2,
+    "wingspan_m": 13,
     "lift_rotor_count": 7,
     "rotor_diameter_m": 2.3,
 }

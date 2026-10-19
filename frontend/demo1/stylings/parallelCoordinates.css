@@ -8,14 +8,14 @@
 }
 
 .parallel-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 6px;
 }
 
 .parallel-subtitle {
-  color: #666;
+  color: var(--muted);
   font-size: 13px;
 }
 
@@ -23,8 +23,8 @@
   position: relative;
   width: 100%;
   overflow-x: auto;
-  background: #fff;
-  border: 1px solid #d5d5d5;
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .parallel-canvas {
@@ -61,17 +61,17 @@
 .parallel-axis path,
 .parallel-axis line {
   fill: none;
-  stroke: #1f2937;
+  stroke: var(--ink);
   shape-rendering: crispEdges;
 }
 
 .parallel-axis text {
-  fill: #374151;
-  font: 12px Arial, sans-serif;
+  fill: var(--muted);
+  font: 12px var(--font);
 }
 
 .parallel-axis-label {
-  fill: #111827 !important;
+  fill: var(--ink) !important;
   font-size: 12px !important;
 }
 
@@ -87,7 +87,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #222;
+  color: var(--ink);
   font-size: 13px;
 }
 

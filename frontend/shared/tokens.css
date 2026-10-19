@@ -1,0 +1,52 @@
+/* Design tokens shared by every page ("Lab instrument" direction).
+   No borders-as-decoration, no gradients, no shadows at rest: surfaces separate by
+   one tone step and the plots are the loudest thing on screen.
+   Data colors stay 6-digit hex: scripts read them with getComputedStyle (see
+   demo1/scripts/colorUtils.js cssVar) and colorUtils parses hex. */
+:root {
+  /* Type */
+  --font: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-md: 15px;
+  --text-lg: 20px;
+
+  /* Surfaces, light to dark */
+  --surface: #ffffff;
+  --panel: #f4f4f2;
+  --panel-2: #e9e9e6;
+  --line-soft: #e9e9e6;
+  --line: #d3d3cf;
+
+  /* Text */
+  --ink: #141414;
+  --muted: #5f5f5b;
+  --faint: #9a9a95;
+  --on-ink: #ffffff;
+  --tooltip-bg: rgba(20, 20, 20, 0.92);
+
+  /* One accent: Virginia Tech maroon, for selection and the primary action only */
+  --accent: #861f41;
+
+  /* Data. Okabe-Ito set, readable with common color-vision deficiencies. */
+  --label-infeasible: #bdbdbd;
+  --label-l22: #d55e00;
+  --label-l21: #0072b2;
+  --label-l11: #009e73;
+  --selection: #861f41;
+  --data-low: #d55e00;
+  --data-high: #0072b2;
+
+  /* Status */
+  --danger: #a3271d;
+  --danger-bg: #fbeeec;
+
+  /* Shape and space */
+  --radius: 2px;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}

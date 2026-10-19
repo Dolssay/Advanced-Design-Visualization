@@ -4,25 +4,23 @@
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
-  border: 1px solid #cfcfcf;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #fafafa 0%, #f2f2f2 100%);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--panel);
   min-height: 64px;
   width: 100%;
   box-sizing: border-box;
 }
 
 .tools-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-weight: 700;
   font-size: 20px;
   line-height: 1;
-  color: #222;
+  color: var(--ink);
   display: flex;
   align-items: center;
   padding-right: 8px;
-  border-right: 1px solid #d8d8d8;
 }
 
 .tools-left,
@@ -35,10 +33,10 @@
 }
 
 .tool-button {
-  border: 1px solid #bfbfbf;
-  background: #fff;
-  color: #222;
-  border-radius: 8px;
+  border: 1px solid transparent;
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
   padding: 8px 12px;
   font: inherit;
   cursor: pointer;
@@ -46,7 +44,7 @@
 }
 
 .tool-button:hover {
-  background: #f4f4f4;
+  background: var(--panel-2);
 }
 
 .tool-button:active {
@@ -54,9 +52,9 @@
 }
 
 .tool-button[data-active="true"] {
-  background: #1f2937;
-  border-color: #111827;
-  color: #fff;
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--on-ink);
 }
 
 .tool-button-dropdown {
@@ -85,7 +83,7 @@
 .tool-menu-button::after {
   content: "▾";
   font-size: 14px;
-  color: #1f2937;
+  color: var(--ink);
 }
 
 .tool-field {
@@ -93,10 +91,10 @@
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
-  border: 1px solid #d1d1d1;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.8);
-  color: #222;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
 }
 
@@ -106,12 +104,12 @@
 }
 
 .tool-select {
-  border: 1px solid #c7c7c7;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   padding: 6px 8px;
   font: inherit;
-  background: #fff;
-  color: #222;
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .tool-switch {
@@ -119,10 +117,10 @@
   align-items: center;
   gap: 8px;
   padding: 6px 10px;
-  border: 1px solid #c7c7c7;
-  border-radius: 10px;
-  background: #fff;
-  color: #222;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
   font-size: 13px;
   font-weight: 600;
 }
@@ -166,9 +164,9 @@
   left: 0;
   min-width: 190px;
   padding: 10px;
-  border: 1px solid #d1d1d1;
-  border-radius: 10px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
   z-index: 10;
   display: flex;
@@ -183,7 +181,6 @@
 
 .tools-root[data-compact="true"] .tools-title {
   border-right: 0;
-  border-bottom: 1px solid #d8d8d8;
   padding-right: 0;
   padding-bottom: 8px;
 }

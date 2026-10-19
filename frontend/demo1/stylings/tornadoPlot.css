@@ -10,16 +10,16 @@
 }
 
 .tornado-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-size: 20px;
   font-weight: 700;
-  color: #111;
+  color: var(--ink);
   margin-bottom: 4px;
 }
 
 .tornado-subtitle {
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
 }
 
 .tornado-controls {
@@ -33,15 +33,15 @@
 .tornado-control-label {
   font-size: 14px;
   font-weight: 600;
-  color: #222;
+  color: var(--ink);
 }
 
 .tornado-objective-select {
   padding: 6px 10px;
-  border: 1px solid #bbb;
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
-  color: #222;
+  background: var(--surface);
+  color: var(--ink);
   font-size: 14px;
   cursor: pointer;
 }
@@ -56,16 +56,16 @@
   width: 100%;
   min-width: 720px;
   height: auto;
-  background: #fff;
+  background: var(--surface);
 }
 
 .tornado-grid line {
-  stroke: #e5e5e5;
+  stroke: var(--line-soft);
   stroke-width: 1;
 }
 
 .tornado-zero-line {
-  stroke: #333;
+  stroke: var(--ink);
   stroke-width: 1.5;
 }
 
@@ -79,44 +79,44 @@
 }
 
 .tornado-bar-low {
-  fill: #d62728;
+  fill: var(--data-low);
 }
 
 .tornado-bar-high {
-  fill: #2f6fdd;
+  fill: var(--data-high);
 }
 
 .tornado-y-axis text {
   font-size: 13px;
-  fill: #222;
+  fill: var(--ink);
 }
 
 .tornado-x-axis text {
   font-size: 11px;
-  fill: #444;
+  fill: var(--muted);
 }
 
 .tornado-x-axis path,
 .tornado-x-axis line {
-  stroke: #777;
+  stroke: var(--muted);
 }
 
 .tornado-axis-label {
   font-size: 13px;
-  fill: #333;
+  fill: var(--ink);
 }
 
 .tornado-legend text {
   font-size: 11px;
-  fill: #333;
+  fill: var(--ink);
 }
 
 .tornado-legend-low {
-  fill: #d62728;
+  fill: var(--data-low);
 }
 
 .tornado-legend-high {
-  fill: #2f6fdd;
+  fill: var(--data-high);
 }
 
 .tornado-tooltip {
@@ -125,8 +125,8 @@
   pointer-events: none;
   padding: 8px 10px;
   border-radius: 5px;
-  background: rgba(20, 20, 20, 0.92);
-  color: white;
+  background: var(--tooltip-bg);
+  color: var(--on-ink);
   font-size: 12px;
   line-height: 1.4;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
@@ -134,11 +134,11 @@
 
 .tornado-empty {
   font-size: 14px;
-  fill: #777;
+  fill: var(--muted);
 }
 
 .tornado-tooltip-note {
   display: inline-block;
   margin-top: 4px;
-  color: #ccc;
+  color: var(--line);
 }

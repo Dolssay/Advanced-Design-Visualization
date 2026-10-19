@@ -1,5 +1,6 @@
 import { zoomablePlot } from "./zoomablePlot.js";
 import { createGTB777Sketch } from "./sketchGTB777.js";
+import { LABEL_COLORS } from "./gtb777Dimensions.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -8,7 +9,7 @@ const drawOrder = {
   "Level 1-1": 3
 };
 const colorDomain = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
-const colorRange = ["#b0b0b0", "#d62728", "#000000", "#4a90e2"];
+const colorRange = LABEL_COLORS;
 
 function createLegend() {
   const legend = document.createElement("div");

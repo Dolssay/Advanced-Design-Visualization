@@ -20,6 +20,15 @@ function getRelativeLuminance(hex) {
   return (0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b) / 255;
 }
 
+// Reads a design token from shared/tokens.css. The fallback covers DOM-free callers
+// (workers, node) and a page that forgot to link tokens.css.
+export function cssVar(name, fallback) {
+  if (typeof document === "undefined") {
+    return fallback;
+  }
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 export function isColorDark(hex, threshold = 0.35) {
   return getRelativeLuminance(hex) < threshold;
 }

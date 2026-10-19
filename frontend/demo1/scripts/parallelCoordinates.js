@@ -1,5 +1,6 @@
 import { getGTB777SketchColor } from "./sketchGTB777.js";
 import { getHighlightOutlineColor } from "./colorUtils.js";
+import { HIGHLIGHT_OUTLINE_COLOR, LABEL_COLORS, SELECTION_COLOR } from "./gtb777Dimensions.js";
 
 const drawOrder = {
   "Infeasible": 0,
@@ -9,7 +10,7 @@ const drawOrder = {
 };
 
 const colorDomain = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
-const colorRange = ["#a5a5a5", "#d62728", "#111111", "#2f6fdd"];
+const colorRange = LABEL_COLORS;
 
 const dimensions = [
   { key: "ARHT", label: "ARHT" },
@@ -40,16 +41,15 @@ const BACKGROUND_LINE_WIDTH = 1.25;
 // Outline color for hover/pinned-highlight lines -- matches the dark outline zoomablePlot.js
 // (the scatterplot matrix) already draws around a highlighted point, so a point reads as
 // "the same point" whether you're looking at the splom or the parallel coordinates plot.
-const HIGHLIGHT_OUTLINE_COLOR = "#111827";
 const HIGHLIGHT_OUTLINE_WIDTH = 4;
 const HIGHLIGHT_LINE_WIDTH = 2;
 
 // A point becomes "added to the Content box" the moment it is click-selected on any plot
 // (controller.getAllPinnedIds() -- the same set the Content box's "Manage Highlighted Points"
-// list is built from). This is deliberately the same green zoomablePlot.js already outlines
+// list is built from). This is deliberately the same selection color zoomablePlot.js outlines
 // a click-selected point with, so a design reads as "added to Content" consistently across
 // both plots, independent of whether it is currently hovered or list-pinned on top of that.
-const SELECTION_LINE_COLOR = "#16a34a";
+const SELECTION_LINE_COLOR = SELECTION_COLOR;
 const SELECTION_LINE_WIDTH = 2;
 
 const supportsOffThreadRender =
@@ -153,7 +153,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
   // Mirrors the splom's click-to-select pins (controller.getAllPinnedIds()) -- the same set
   // that populates the Content box's "Manage Highlighted Points" list. Drawn beneath the
   // hover/pinned-highlight layer so a point that is both selected and currently hovered still
-  // reads clearly as "hovered" on top of its green "in Content box" state.
+  // reads clearly as "hovered" on top of its "in Content box" selection color.
   function drawContentBoxSelectionLines(visibleLabels) {
     const pinnedPointIds = controller?.getAllPinnedIds?.() ?? new Set();
     if (!pinnedPointIds.size) {

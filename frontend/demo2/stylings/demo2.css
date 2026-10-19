@@ -1,9 +1,11 @@
-/* Demo 2 layout. Same base look as Demo 1 (Arial, light gray page, white cards). */
+/* Demo 2 layout. Same base look as Demo 1 (shared tokens: white page, panels one tone step down). */
 body {
   margin: 0;
-  font-family: Arial, sans-serif;
-  background: #f5f5f5;
-  color: #222;
+  font-family: var(--font);
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+  accent-color: var(--accent);
+  color: var(--ink);
 }
 
 .d2 {
@@ -27,23 +29,22 @@ body {
 
 .d2-back {
   font-size: 13px;
-  color: #2a78d6;
+  color: var(--muted);
   text-decoration: none;
 }
 
 .d2-sub {
   margin: 0;
-  color: #555;
+  color: var(--muted);
   font-size: 14px;
 }
 
 .chip {
   flex: none;
   padding: 5px 10px;
-  border-radius: 999px;
+  border-radius: var(--radius);
   font-size: 12px;
-  border: 1px solid #ccc;
-  background: #fff;
+  background: var(--panel);
   white-space: nowrap;
 }
 
@@ -54,13 +55,14 @@ body {
   height: 8px;
   margin-right: 6px;
   border-radius: 50%;
-  background: #999;
+  background: var(--faint);
   vertical-align: 0;
 }
 
-.chip-ok::before { background: #1baf7a; }
-.chip-bad::before { background: #e34948; }
-.chip-pending::before { background: #eda100; }
+/* Status colors are semantic, not the accent. */
+.chip-ok::before { background: var(--label-l11); }
+.chip-bad::before { background: var(--danger); }
+.chip-pending::before { background: var(--faint); }
 
 .d2-layout {
   display: grid;
@@ -76,16 +78,15 @@ body {
   overflow: auto;
   box-sizing: border-box;
   padding: 16px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--panel);
+  border-radius: var(--radius);
 }
 
 .field-label {
   display: block;
   font-size: 12px;
   font-weight: 600;
-  color: #444;
+  color: var(--muted);
   margin-bottom: 4px;
 }
 
@@ -95,9 +96,10 @@ body {
   font: inherit;
   font-size: 14px;
   padding: 6px 8px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .d2-panel > .select {
@@ -111,7 +113,6 @@ body {
 
 .param-group {
   border: 0;
-  border-top: 1px solid #eee;
   margin: 0;
   padding: 10px 0 4px;
 }
@@ -122,7 +123,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #777;
+  color: var(--muted);
 }
 
 .param-row {
@@ -138,7 +139,7 @@ body {
 }
 
 .param-unit {
-  color: #777;
+  color: var(--muted);
 }
 
 .param-changed {
@@ -150,7 +151,7 @@ body {
 }
 
 .param-row.is-changed .param-changed {
-  background: #2a78d6;
+  background: var(--accent);
 }
 
 .param-inputs {
@@ -162,7 +163,6 @@ body {
 .param-slider {
   flex: 1 1 auto;
   min-width: 0;
-  accent-color: #2a78d6;
 }
 
 .param-number {
@@ -170,20 +170,22 @@ body {
   font: inherit;
   font-size: 13px;
   padding: 4px 6px;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
 }
 
 .param-note {
   display: block;
   min-height: 0;
   font-size: 11.5px;
-  color: #666;
+  color: var(--muted);
   margin-top: 2px;
 }
 
 .param-row.is-outside .param-note {
-  color: #9a5b00;
+  color: var(--danger);
 }
 
 .warnings {
@@ -196,9 +198,9 @@ body {
   margin: 4px 0;
   padding: 6px 8px;
   font-size: 12.5px;
-  border-left: 3px solid #eda100;
-  background: #fff8e6;
-  border-radius: 4px;
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
 }
 
 .panel-actions {
@@ -211,15 +213,15 @@ body {
   font: inherit;
   font-size: 14px;
   padding: 8px 14px;
-  border-radius: 6px;
-  border: 1px solid #bbb;
-  background: #fff;
-  color: #222;
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  background: var(--surface);
+  color: var(--ink);
   cursor: pointer;
 }
 
 .btn:hover:not(:disabled) {
-  border-color: #888;
+  background: var(--panel-2);
 }
 
 .btn:disabled {
@@ -227,27 +229,23 @@ body {
   cursor: default;
 }
 
-.btn-primary {
-  background: #2a78d6;
-  border-color: #2a78d6;
-  color: #fff;
-}
-
+.btn-primary,
 .btn-primary:hover:not(:disabled) {
-  background: #2468bb;
-  border-color: #2468bb;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-ink);
 }
 
 .hint {
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
   margin: 8px 0;
 }
 
 .tabs {
   display: flex;
   gap: 4px;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--line-soft);
   margin-bottom: 16px;
 }
 
@@ -258,13 +256,13 @@ body {
   border: 0;
   border-bottom: 3px solid transparent;
   background: transparent;
-  color: #555;
+  color: var(--muted);
   cursor: pointer;
 }
 
 .tab.is-active {
-  color: #111;
-  border-bottom-color: #2a78d6;
+  color: var(--ink);
+  border-bottom-color: var(--accent);
   font-weight: 600;
 }
 
@@ -273,7 +271,7 @@ body {
 }
 
 .empty-state {
-  color: #777;
+  color: var(--muted);
 }
 
 .loading {
@@ -281,14 +279,14 @@ body {
   align-items: center;
   gap: 10px;
   padding: 16px 0;
-  color: #555;
+  color: var(--muted);
 }
 
 .spinner {
   width: 16px;
   height: 16px;
-  border: 2px solid #cfdcef;
-  border-top-color: #2a78d6;
+  border: 2px solid var(--line);
+  border-top-color: var(--ink);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -299,10 +297,10 @@ body {
 
 .error-box {
   padding: 12px 16px;
-  color: #8a1f1f;
-  background: #ffecec;
-  border: 1px solid #f1c0c0;
-  border-radius: 6px;
+  color: var(--danger);
+  background: var(--danger-bg);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
 }
 
 .error-box p {
@@ -320,48 +318,45 @@ body {
   flex-direction: column;
   gap: 4px;
   padding: 12px 14px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--panel);
+  border-radius: var(--radius);
 }
 
 .kpi-label {
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
 }
 
 .kpi-value {
   font-size: 24px;
   font-weight: 600;
-  font-variant-numeric: tabular-nums;
 }
 
 .kpi-unit {
   font-size: 13px;
   font-weight: 400;
-  color: #666;
+  color: var(--muted);
 }
 
 .kpi-delta {
   font-size: 12px;
-  color: #555;
+  color: var(--muted);
   min-height: 14px;
 }
 
 .run-meta {
   font-size: 12.5px;
-  color: #666;
+  color: var(--muted);
   margin: 10px 0;
 }
 
 .run-meta a {
-  color: #2a78d6;
+  color: var(--ink);
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  background: var(--panel);
+  border-radius: var(--radius);
   padding: 12px;
 }
 
@@ -376,16 +371,21 @@ body {
   font: inherit;
   font-size: 13px;
   padding: 6px 10px;
-  border: 1px solid #ccc;
-  border-radius: 999px;
-  background: #fff;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
   cursor: pointer;
 }
 
+.image-tab:hover {
+  background: var(--panel-2);
+}
+
 .image-tab.is-active {
-  background: #2a78d6;
-  border-color: #2a78d6;
-  color: #fff;
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-ink);
 }
 
 .plot-figure {
@@ -401,13 +401,13 @@ body {
 
 .plot-figure figcaption {
   font-size: 12px;
-  color: #666;
+  color: var(--muted);
   text-align: center;
   margin-top: 6px;
 }
 
 .plot-figure figcaption a {
-  color: #2a78d6;
+  color: var(--ink);
 }
 
 .controls {
@@ -430,25 +430,24 @@ body {
 
 .table-box summary {
   cursor: pointer;
-  color: #2a78d6;
+  color: var(--ink);
 }
 
 .data-table {
   border-collapse: collapse;
   margin-top: 8px;
-  font-variant-numeric: tabular-nums;
 }
 
 .data-table th,
 .data-table td {
   padding: 4px 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--line-soft);
   text-align: right;
 }
 
 .data-table th {
   font-weight: 600;
-  color: #444;
+  color: var(--muted);
 }
 
 @media (max-width: 900px) {

@@ -1,26 +1,26 @@
-/* Chart roles. Series colors are slots 1-2 of the validated reference palette
-   (blue, orange), which pass the colorblind-separation checks as a pair. */
+/* Chart roles, mapped onto the shared tokens. Series colors are the Okabe-Ito
+   blue/vermillion pair (--data-high/--data-low), colorblind-safe as a pair. */
 .chart {
-  --surface-1: #ffffff;
-  --text-primary: #1f1f1f;
-  --text-secondary: #5a5955;
-  --grid: #ececea;
-  --axis: #b9b8b3;
-  --series-1: #2a78d6;
-  --series-2: #eb6834;
-  --fail: #3b3a37;
+  --surface-1: var(--surface);
+  --text-primary: var(--ink);
+  --text-secondary: var(--muted);
+  --grid: var(--line-soft);
+  --axis: var(--line);
+  --series-1: var(--data-high);
+  --series-2: var(--data-low);
+  --fail: var(--ink);
 
   position: relative;
   margin-top: 12px;
   background: var(--surface-1);
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
   padding: 8px 4px 4px;
 }
 
 .viz {
   display: block;
-  font-family: Arial, sans-serif;
+  font-family: var(--font);
   font-size: 12px;
 }
 
@@ -127,20 +127,20 @@
   padding: 8px 10px;
   font-size: 12px;
   line-height: 1.45;
-  color: #1f1f1f;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+  color: var(--on-ink);
+  background: var(--tooltip-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   pointer-events: none;
 }
 
 .viz-tooltip .tip-hint {
-  color: #2a78d6;
+  color: var(--on-ink);
+  font-weight: 600;
 }
 
 .viz-tooltip .tip-small {
-  color: #555;
+  color: var(--faint);
   font-size: 11.5px;
 }
 
@@ -150,7 +150,7 @@
   gap: 16px;
   margin-top: 12px;
   font-size: 12.5px;
-  color: #444;
+  color: var(--muted);
 }
 
 .legend-item {
@@ -162,15 +162,15 @@
 .swatch {
   width: 14px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius);
 }
 
-.swatch.s1 { background: #2a78d6; }
-.swatch.s2 { background: #eb6834; }
+.swatch.s1 { background: var(--data-high); }
+.swatch.s2 { background: var(--data-low); }
 
 .legend-x {
   font-weight: 700;
-  color: #3b3a37;
+  color: var(--ink);
 }
 
 /* Decorations never block the hover/click layers underneath. */

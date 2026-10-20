@@ -255,8 +255,8 @@ export function createParallelCoordinates(data = [], config = {}) {
     ValueError: "#5f5f5b",
   };
 
-  const ldColorScale = d3.scaleSequential(d3.interpolateViridis).domain([8.5, 13.0]);
-  const mtowColorScale = d3.scaleSequential(d3.interpolateTurbo).domain([2000, 6500]);
+  const ldColorScale = d3.scaleSequential((t) => d3.interpolateBlues(0.35 + 0.60 * t)).domain([8.5, 13.0]);
+  const mtowColorScale = d3.scaleSequential((t) => d3.interpolateBlues(0.35 + 0.60 * t)).domain([2000, 6500]);
   const fallbackColor = colorDomain && colorRange ? d3.scaleOrdinal(colorDomain, colorRange) : null;
 
   function getRowColor(row) {

@@ -453,7 +453,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
     const x = d3.scaleLinear().domain(xExtent).nice().range([0, inner.w]);
     const y = d3.scaleLinear().domain(yExtent).nice().range([inner.h, 0]);
     const colorScale = d3
-      .scaleSequential(d3.interpolateViridis)
+      .scaleSequential((t) => d3.interpolateBlues(0.35 + 0.60 * t))
       .domain([ldExtent[0] ?? 8.5, ldExtent[1] ?? 13.0]);
 
     const g = svg.append("g").attr("transform", `translate(${MARGIN.left},${MARGIN.top})`);

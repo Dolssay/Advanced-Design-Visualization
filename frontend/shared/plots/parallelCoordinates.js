@@ -157,9 +157,9 @@ export function createParallelCoordinates(data = [], config = {}) {
   frame.style.position = "relative";
   frame.style.width = "100%";
   frame.style.height = `${height}px`;
-  frame.style.borderRadius = "8px";
-  frame.style.background = "var(--surface-1, #ffffff)";
-  frame.style.border = "1px solid #ddd";
+  frame.style.borderRadius = "var(--radius, 2px)";
+  frame.style.background = "var(--surface, #ffffff)";
+  frame.style.border = "1px solid var(--line, #d3d3cf)";
   frame.style.overflow = "hidden";
 
   const canvas = document.createElement("canvas");
@@ -244,15 +244,15 @@ export function createParallelCoordinates(data = [], config = {}) {
 
   buildScales();
 
-  // Colors (matching app's validated reference palette in charts.css)
+  // Colors (matching app's Okabe-Ito tokens in tokens.css / charts.css)
   const defaultStatusColors = {
-    converged: "#2a78d6",
-    max_iter: "#eb6834",
-    diverged: "#64748b",
-    error: "#ef4444",
-    Success: "#2a78d6",
-    NotConverged: "#eb6834",
-    ValueError: "#64748b",
+    converged: "#0072b2",
+    max_iter: "#d55e00",
+    diverged: "#5f5f5b",
+    error: "#a3271d",
+    Success: "#0072b2",
+    NotConverged: "#d55e00",
+    ValueError: "#5f5f5b",
   };
 
   const ldColorScale = d3.scaleSequential(d3.interpolateViridis).domain([8.5, 13.0]);

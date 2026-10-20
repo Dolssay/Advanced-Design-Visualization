@@ -127,7 +127,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
 
   const failedBadge = el("span", {
     class: "chip chip-muted",
-    style: "font-size: 11px; padding: 2px 8px;",
+    style: "font-size: 11px; padding: 2px 8px; border-radius: var(--radius, 2px); background: var(--panel, #f4f4f2); color: var(--muted, #5f5f5b); border: 1px solid var(--line-soft, #e9e9e6);",
     text: "0 failed — grey in parallel coordinates",
   });
 
@@ -136,7 +136,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
     "label",
     {
       for: "ens-ld-toggle",
-      style: "display: inline-flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; user-select: none;",
+      style: "display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink, #141414); cursor: pointer; user-select: none;",
     },
     [ldCheckbox, "Include L/D as an objective"]
   );
@@ -146,7 +146,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
     {
       class: "ensemble-summary-bar",
       style:
-        "display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 14px; background: var(--surface-1, #ffffff); border: 1px solid #ddd; border-radius: 8px; margin-top: 8px; margin-bottom: 8px;",
+        "display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; padding: 10px 14px; background: var(--surface, #ffffff); border: 1px solid var(--line, #d3d3cf); border-radius: var(--radius, 2px); margin-top: 8px; margin-bottom: 8px;",
     },
     [
       el("div", { style: "display: flex; align-items: center; gap: 12px; flex-wrap: wrap;" }, [
@@ -540,7 +540,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       g.append("path")
         .datum(sortedFront)
         .attr("fill", "none")
-        .attr("stroke", "#2a78d6")
+        .attr("stroke", "#0072b2")
         .attr("stroke-width", 2.5)
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round")

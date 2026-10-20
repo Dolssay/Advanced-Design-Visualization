@@ -23,7 +23,7 @@
 }
 
 .splom-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 6px;
@@ -31,7 +31,7 @@
 
 .splom-subtitle {
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
 }
 
 .splom-grid {
@@ -41,7 +41,7 @@
 }
 
 .splom-cell {
-  border: 1px solid #ccc;
+  border: 1px solid var(--line);
 }
 
 .splom-cell-blank {
@@ -50,7 +50,7 @@
   border-color: transparent;
   position: relative;
   overflow: hidden;
-  background: #fff;
+  background: var(--surface);
 }
 
 .gtb777-sketch {
@@ -68,30 +68,30 @@
 .gtb777-sketch-axis,
 .gtb777-sketch-axis-tick {
   fill: none;
-  stroke: #111827;
+  stroke: var(--ink);
   stroke-width: 1.4;
 }
 
 .gtb777-sketch-centerline {
   fill: none;
-  stroke: #d1d5db;
+  stroke: var(--line);
   stroke-width: 1;
   stroke-dasharray: 5 5;
 }
 
 .gtb777-sketch-caption {
-  fill: #6b7280;
-  font: 12px Arial, sans-serif;
+  fill: var(--muted);
+  font: 12px var(--font);
 }
 
 .gtb777-sketch-tick-label {
-  fill: #111827;
-  font: 12px Arial, sans-serif;
+  fill: var(--ink);
+  font: 12px var(--font);
 }
 
 .gtb777-sketch-axis-label {
-  fill: #374151;
-  font: 12px Arial, sans-serif;
+  fill: var(--muted);
+  font: 12px var(--font);
 }
 
 .gtb777-sketch-fuselage,
@@ -127,10 +127,10 @@
   right: 44px;
   bottom: 72px;
   padding: 10px 12px;
-  border: 1px dashed #d1d5db;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.9);
-  color: #6b7280;
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
   font-size: 12px;
   line-height: 1.35;
   text-align: center;
@@ -158,13 +158,13 @@
   width: 14px;
   height: 14px;
   background-color: var(--legend-color);
-  border: 1px solid #999;
+  border: 1px solid var(--faint);
   display: inline-block;
 }
 
 .splom-legend-label {
   font-size: 13px;
-  color: #222;
+  color: var(--ink);
 }
 
 @media (max-width: 1200px) {

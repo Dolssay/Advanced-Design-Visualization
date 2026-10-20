@@ -11,7 +11,7 @@
 }
 
 .profiler-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-size: 20px;
   font-weight: 700;
   margin-bottom: 6px;
@@ -19,7 +19,7 @@
 
 .profiler-subtitle {
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
 }
 
 .profiler-controls {
@@ -30,10 +30,10 @@
 }
 
 .profiler-button {
-  border: 1px solid #c9c9c9;
-  border-radius: 999px;
-  background: #fff;
-  color: #1f2937;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-size: 13px;
   font-weight: 700;
@@ -43,22 +43,22 @@
 }
 
 .profiler-button:hover:not(:disabled) {
-  background: #f5f5f5;
+  background: var(--panel);
 }
 
 .profiler-button:disabled {
-  color: #b0b0b0;
-  border-color: #e4e4e4;
+  color: var(--faint);
+  border-color: var(--line-soft);
   cursor: not-allowed;
 }
 
 .profiler-notice {
   margin-top: 10px;
   padding: 7px 12px;
-  border: 1px solid #f1c0c0;
-  border-radius: 8px;
-  background: #fff6f6;
-  color: #8a3b3b;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: var(--danger-bg);
+  color: var(--danger);
   font-size: 12px;
   line-height: 1.35;
 }
@@ -79,64 +79,64 @@
 }
 
 .profiler-readout-label {
-  fill: #1f2937;
-  font: 700 11px Arial, sans-serif;
+  fill: var(--ink);
+  font: 700 11px var(--font);
 }
 
 .profiler-readout-unit {
-  fill: #6b7280;
-  font: 9px Arial, sans-serif;
+  fill: var(--muted);
+  font: 9px var(--font);
 }
 
 .profiler-readout-value {
-  fill: #d62728;
-  font: 700 15px Arial, sans-serif;
+  fill: var(--accent);
+  font: 700 15px var(--font);
 }
 
 .profiler-readout-r2 {
-  fill: #9ca3af;
-  font: 9px Arial, sans-serif;
+  fill: var(--faint);
+  font: 9px var(--font);
 }
 
 .profiler-tick-label {
-  fill: #222;
-  font: 9px Arial, sans-serif;
+  fill: var(--ink);
+  font: 9px var(--font);
 }
 
 .profiler-gridline {
-  stroke: #e6e6e6;
+  stroke: var(--line-soft);
   stroke-width: 1;
 }
 
 .profiler-axis {
   fill: none;
-  stroke: #999;
+  stroke: var(--faint);
   stroke-width: 1;
 }
 
 .profiler-curve {
   fill: none;
-  stroke: #2563eb;
+  stroke: var(--data-high);
   stroke-width: 1.75;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .profiler-crosshair-v {
-  stroke: #d62728;
+  stroke: var(--accent);
   stroke-width: 1;
 }
 
 .profiler-crosshair-h {
-  stroke: #d62728;
+  stroke: var(--accent);
   stroke-width: 1;
   stroke-dasharray: 3 3;
   opacity: 0.65;
 }
 
 .profiler-marker {
-  fill: #d62728;
-  stroke: #fff;
+  fill: var(--accent);
+  stroke: var(--surface);
   stroke-width: 1;
 }
 
@@ -151,16 +151,16 @@
 }
 
 .profiler-factor-label {
-  fill: #374151;
-  font: 10px Arial, sans-serif;
+  fill: var(--muted);
+  font: 10px var(--font);
 }
 
 .profiler-factor-bound {
-  fill: #9ca3af;
-  font: 9px Arial, sans-serif;
+  fill: var(--faint);
+  font: 9px var(--font);
 }
 
 .profiler-factor-value {
-  fill: #d62728;
-  font: 700 11px Arial, sans-serif;
+  fill: var(--accent);
+  font: 700 11px var(--font);
 }

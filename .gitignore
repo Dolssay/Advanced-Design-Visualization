@@ -17,3 +17,6 @@ frontend/dist/
 *.png
 *.csv
 !frontend/public/data/GTB777.csv
+
+# Claude artifacts
+.claude/

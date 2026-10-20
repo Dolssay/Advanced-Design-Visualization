@@ -1,4 +1,4 @@
-import { getHighlightOutlineColor } from "./colorUtils.js";
+import { cssVar, getHighlightOutlineColor } from "./colorUtils.js";
 
 export function zoomablePlot({
   data,
@@ -175,10 +175,10 @@ export function zoomablePlot({
 
     context.save();
     context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
-    context.strokeStyle = "#e6e6e6";
-    context.fillStyle = "#222";
+    context.strokeStyle = cssVar("--line-soft", "#e9e9e6");
+    context.fillStyle = cssVar("--ink", "#141414");
     context.lineWidth = 1;
-    context.font = "12px Arial, sans-serif";
+    context.font = `12px ${cssVar("--font", "Arial, sans-serif")}`;
 
     context.beginPath();
     for (const tick of xTicks) {
@@ -193,7 +193,7 @@ export function zoomablePlot({
     }
     context.stroke();
 
-    context.strokeStyle = "#999";
+    context.strokeStyle = cssVar("--faint", "#9a9a95");
     context.beginPath();
     context.moveTo(plotLeft, plotBottom);
     context.lineTo(plotRight, plotBottom);
@@ -288,7 +288,7 @@ export function zoomablePlot({
       }
 
       context.save();
-      context.strokeStyle = "#16a34a";
+      context.strokeStyle = cssVar("--selection", "#861f41");
       context.lineWidth = 1.25;
       context.strokeRect(pinnedPoint.cx - 2.25, pinnedPoint.cy - 2.25, 4.5, 4.5);
       context.restore();

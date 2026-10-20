@@ -1,18 +1,25 @@
-// Shared GTB777 column and label metadata for the box & violin plot and the heatmap.
-// Label colors match the parallel coordinates plot so a label reads the same everywhere.
+// Shared GTB777 column and label metadata. Every plot takes its label and selection
+// colors from here, and these come from the tokens in shared/tokens.css, so a label
+// reads the same everywhere.
+import { cssVar } from "./colorUtils.js";
 
 export const LABEL_DOMAIN = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
-export const LABEL_COLORS = ["#a5a5a5", "#d62728", "#111111", "#2f6fdd"];
+export const LABEL_COLORS = [
+  cssVar("--label-infeasible", "#bdbdbd"),
+  cssVar("--label-l22", "#d55e00"),
+  cssVar("--label-l21", "#0072b2"),
+  cssVar("--label-l11", "#009e73")
+];
 
 export function getLabelColor(label) {
   const index = LABEL_DOMAIN.indexOf(label);
-  return index >= 0 ? LABEL_COLORS[index] : "#6b7280";
+  return index >= 0 ? LABEL_COLORS[index] : cssVar("--muted", "#5f5f5b");
 }
 
-// Same green the scatterplot matrix and parallel coordinates use for a design that has
-// been click-selected (added to the Content box's highlighted points list).
-export const SELECTION_COLOR = "#16a34a";
-export const HIGHLIGHT_OUTLINE_COLOR = "#111827";
+// Color for a design that has been click-selected (added to the Content box's
+// highlighted points list), used by every linked plot.
+export const SELECTION_COLOR = cssVar("--selection", "#861f41");
+export const HIGHLIGHT_OUTLINE_COLOR = cssVar("--ink", "#141414");
 
 export const DIMENSIONS = [
   { key: "ARHT", label: "ARHT", unit: "", group: "input" },

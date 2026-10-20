@@ -8,16 +8,16 @@
 }
 
 .heatmap-title {
-  font-family: "Times New Roman", serif;
+  font-family: var(--font);
   font-size: 20px;
   font-weight: 700;
-  color: #111;
+  color: var(--ink);
   margin-bottom: 6px;
 }
 
 .heatmap-subtitle {
   font-size: 13px;
-  color: #666;
+  color: var(--muted);
   line-height: 1.4;
 }
 
@@ -39,25 +39,25 @@
 .heatmap-control-label {
   font-size: 13px;
   font-weight: 700;
-  color: #222;
+  color: var(--ink);
 }
 
 .heatmap-select {
   padding: 5px 8px;
-  border: 1px solid #bbb;
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
-  color: #222;
+  background: var(--surface);
+  color: var(--ink);
   font-size: 13px;
   cursor: pointer;
 }
 
 .heatmap-button {
   padding: 5px 10px;
-  border: 1px solid #bbb;
+  border: 1px solid var(--line);
   border-radius: 4px;
-  background: #fff;
-  color: #222;
+  background: var(--surface);
+  color: var(--ink);
   font: inherit;
   font-size: 13px;
   font-weight: 600;
@@ -65,7 +65,7 @@
 }
 
 .heatmap-button:hover {
-  background: #f3f4f6;
+  background: var(--panel);
 }
 
 .heatmap-toggle {
@@ -74,14 +74,14 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: #222;
+  color: var(--ink);
   cursor: pointer;
 }
 
 .heatmap-frame {
   position: relative;
-  background: #fff;
-  border: 1px solid #d5d5d5;
+  background: var(--surface);
+  border: 1px solid var(--line);
 }
 
 .heatmap-svg {
@@ -107,32 +107,32 @@
 }
 
 .heatmap-hatch-bg {
-  fill: #fafafa;
+  fill: var(--panel);
 }
 
 .heatmap-hatch-line {
-  stroke: #e2e2e2;
+  stroke: var(--line-soft);
   stroke-width: 2;
 }
 
 .heatmap-axis text {
   font-size: 11px;
-  fill: #374151;
+  fill: var(--muted);
 }
 
 .heatmap-axis path,
 .heatmap-axis line {
-  stroke: #6b7280;
+  stroke: var(--muted);
 }
 
 .heatmap-axis-label {
   font-size: 13px;
-  fill: #111827;
+  fill: var(--ink);
 }
 
 .heatmap-hover-cell {
   fill: none;
-  stroke: #111827;
+  stroke: var(--ink);
   stroke-width: 1.5;
   pointer-events: none;
 }
@@ -144,7 +144,7 @@
 
 .heatmap-marker {
   fill: var(--marker-fill);
-  stroke: #ffffff;
+  stroke: var(--surface);
   stroke-width: 1.5;
   cursor: pointer;
 }
@@ -156,7 +156,7 @@
 
 .heatmap-legend-axis text {
   font-size: 11px;
-  fill: #374151;
+  fill: var(--muted);
 }
 
 .heatmap-legend-axis path {
@@ -164,28 +164,28 @@
 }
 
 .heatmap-legend-axis line {
-  stroke: #9ca3af;
+  stroke: var(--faint);
 }
 
 .heatmap-legend-title {
   font-size: 11px;
   font-weight: 700;
-  fill: #111827;
+  fill: var(--ink);
 }
 
 .heatmap-legend-hatch {
-  stroke: #d1d5db;
+  stroke: var(--line);
 }
 
 .heatmap-legend-note {
   font-size: 11px;
-  fill: #6b7280;
+  fill: var(--muted);
 }
 
 .heatmap-status {
   margin-top: 8px;
   font-size: 12px;
-  color: #6b7280;
+  color: var(--muted);
   text-align: center;
 }
 
@@ -195,8 +195,8 @@
   pointer-events: none;
   padding: 8px 10px;
   border-radius: 5px;
-  background: rgba(20, 20, 20, 0.92);
-  color: #fff;
+  background: var(--tooltip-bg);
+  color: var(--on-ink);
   font-size: 12px;
   line-height: 1.45;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);

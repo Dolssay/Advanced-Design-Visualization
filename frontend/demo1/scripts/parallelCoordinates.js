@@ -2,6 +2,7 @@ import d3 from "../../shared/d3-global.js";
 import { createParallelCoordinates as createSharedParallelCoordinates } from "../../shared/plots/parallelCoordinates.js";
 import { getGTB777SketchColor } from "./sketchGTB777.js";
 import { getHighlightOutlineColor } from "./colorUtils.js";
+import { HIGHLIGHT_OUTLINE_COLOR, LABEL_COLORS, SELECTION_COLOR } from "./gtb777Dimensions.js";
 
 const drawOrder = {
   Infeasible: 0,
@@ -11,7 +12,7 @@ const drawOrder = {
 };
 
 const colorDomain = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
-const colorRange = ["#a5a5a5", "#d62728", "#111111", "#2f6fdd"];
+const colorRange = LABEL_COLORS;
 
 const dimensions = [
   { key: "ARHT", label: "ARHT" },

@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: precompute-ensemble
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: precompute
+          image: adv-viz-backend:latest
+          command: ["python", "-m", "pipelines.precompute_ensemble", "--out", "/srv/prebuilt"]
+          volumeMounts:
+            - name: prebuilt-volume
+              mountPath: /srv/prebuilt
+      volumes:
+        - name: prebuilt-volume
+          persistentVolumeClaim:
+            claimName: prebuilt

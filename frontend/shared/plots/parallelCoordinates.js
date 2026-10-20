@@ -244,14 +244,14 @@ export function createParallelCoordinates(data = [], config = {}) {
 
   buildScales();
 
-  // Colors
+  // Colors (matching app's validated reference palette in charts.css)
   const defaultStatusColors = {
-    converged: "#38bdf8",
-    max_iter: "#f59e0b",
+    converged: "#2a78d6",
+    max_iter: "#eb6834",
     diverged: "#64748b",
     error: "#ef4444",
-    Success: "#38bdf8",
-    NotConverged: "#f59e0b",
+    Success: "#2a78d6",
+    NotConverged: "#eb6834",
     ValueError: "#64748b",
   };
 
@@ -621,11 +621,12 @@ export function createParallelCoordinates(data = [], config = {}) {
       return aConv - bConv;
     });
 
+    const baseAlpha = selected.length > 500 ? 0.28 : selected.length > 100 ? 0.45 : 0.75;
     for (const row of selected) {
       if (row === highlightedRow) continue;
       const points = getRowPoints(row);
       const isFailed = row.status && row.status !== "converged" && row.status !== "Success";
-      context.globalAlpha = isFailed ? 0.4 : 0.85;
+      context.globalAlpha = isFailed ? Math.min(0.22, baseAlpha) : baseAlpha;
       context.lineWidth = isFailed ? 1 : 1.25;
       context.strokeStyle = isFailed ? "#64748b" : getRowColor(row);
       context.beginPath();

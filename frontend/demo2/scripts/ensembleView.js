@@ -540,7 +540,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       g.append("path")
         .datum(sortedFront)
         .attr("fill", "none")
-        .attr("stroke", "#38bdf8")
+        .attr("stroke", "#2a78d6")
         .attr("stroke-width", 2.5)
         .attr("stroke-linejoin", "round")
         .attr("stroke-linecap", "round")

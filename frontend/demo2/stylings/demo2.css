@@ -215,9 +215,14 @@ body {
   padding: 8px 14px;
   border-radius: var(--radius);
   border: 1px solid transparent;
-  background: var(--surface);
+  background: var(--panel);
   color: var(--ink);
   cursor: pointer;
+}
+
+/* One tone step against whatever the button sits on. */
+.d2-panel .btn:not(.btn-primary) {
+  background: var(--surface);
 }
 
 .btn:hover:not(:disabled) {

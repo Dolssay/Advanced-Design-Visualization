@@ -33,8 +33,15 @@ export function createFeasibilityBanner(list, { onFix }) {
       return li;
     });
     for (const id of [...nodes.keys()]) if (!items.some((i) => i.id === id)) nodes.delete(id);
-    const current = [...list.children];
-    if (current.length !== next.length || current.some((node, i) => node !== next[i])) list.replaceChildren(...next);
+    // Patch in place: a node that is unchanged and already in position is never
+    // detached, so a button being clicked keeps its identity through a redraw.
+    next.forEach((node, i) => {
+      const at = list.children[i];
+      if (at === node) return;
+      if (at && !next.includes(at)) at.replaceWith(node);
+      else list.insertBefore(node, at || null);
+    });
+    while (list.children.length > next.length) list.lastElementChild.remove();
   }
 
   return { render };

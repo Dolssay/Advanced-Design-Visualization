@@ -146,8 +146,9 @@ export function fmtEdge(value, spec) {
 // The banner's items, merged and de-duplicated from three sources: the live
 // C1-C6 warnings (with fix values from the backend's constraint bounds), the
 // feasibility slices (current value in a failed segment), and the last /size error.
-// `slices` maps key -> { slice, stale }.
-export function bannerItems({ design, specs, slices, warnings = [], sizeError = null }) {
+// `slices` maps key -> { slice, stale }. `first` is the key the user just changed:
+// its item leads, so the slider being dragged explains itself at the top.
+export function bannerItems({ design, specs, slices, warnings = [], sizeError = null, first = null }) {
   const specByKey = Object.fromEntries(specs.map((s) => [s.key, s]));
   const entry = (key) => (slices instanceof Map ? slices.get(key) : slices?.[key]) || null;
   const items = [];
@@ -217,6 +218,11 @@ export function bannerItems({ design, specs, slices, warnings = [], sizeError = 
         stale: e.stale, fixes: []
       });
     }
+  }
+
+  if (first) {
+    const lead = items.findIndex((i) => i.id === first);
+    if (lead > 0) items.unshift(...items.splice(lead, 1));
   }
 
   if (sizeError && !reasons.some((r) => r && sizeError.includes(r))) {

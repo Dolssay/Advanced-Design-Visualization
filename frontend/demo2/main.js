@@ -16,11 +16,39 @@ const $ = (id) => document.getElementById(id);
 const chip = $("status-chip");
 const baselineSelect = $("baseline-select");
 const sizeButton = $("size-button");
+const autoToggle = $("auto-size");
+
+// Auto-size: call /size by itself after the sliders settle. A cold /size renders
+// five plots and takes ~0.5-0.7 s, so the debounce is longer than the 600 ms one
+// for feasibility: the moved slider's verdict is in before we decide to size.
+const AUTO_SIZE_KEY = "demo2.autoSize";
+const AUTO_SIZE_DEBOUNCE_MS = 900;
 
 let baselines = [];
 let reference = null; // sized baseline, for deltas
 let inFlight = null;
-let sizeError = null; // message of the last failed /size, shown in the banner until the next success
+let inFlightAuto = false; // the request in flight was started by auto-size
+let autoTimer = null;
+let sizeError = null; // message of the last failed /size for the current design, shown in the banner
+let lastItems = []; // banner items for the current design
+let lastChanged = null; // the slider changed most recently; its banner item leads
+
+function loadAutoSize() {
+  try {
+    const stored = localStorage.getItem(AUTO_SIZE_KEY);
+    return stored === null ? true : stored === "1";
+  } catch {
+    return true;
+  }
+}
+
+function saveAutoSize(on) {
+  try {
+    localStorage.setItem(AUTO_SIZE_KEY, on ? "1" : "0");
+  } catch {
+    // private mode or blocked storage: the toggle still works for this page load
+  }
+}
 
 async function init() {
   try {
@@ -52,8 +80,13 @@ function start(catalogue) {
   const specByKey = Object.fromEntries(specs.map((p) => [p.key, p]));
   const form = createParameterForm($("param-form"), catalogue, {
     onChange: (design, changedKey) => {
+      if (changedKey) {
+        sizeError = null; // the last /size error was about the previous design
+        lastChanged = changedKey;
+      }
       redrawBanner();
       feasibility.schedule(changedKey);
+      if (changedKey) scheduleAutoSize(); // baseline loads and ensemble picks size on their own
     }
   });
   const getRequest = () => ({ baseline: baselineSelect.value, overrides: form.getOverrides() });
@@ -69,7 +102,29 @@ function start(catalogue) {
   });
   function redrawBanner() {
     const design = form.getDesign();
-    banner.render(bannerItems({ design, specs, slices: feasibility.all(), warnings: constraintWarnings(design), sizeError }));
+    lastItems = bannerItems({ design, specs, slices: feasibility.all(), warnings: constraintWarnings(design), sizeError, first: lastChanged });
+    banner.render(lastItems);
+  }
+
+  // A red banner item: the current value of some input sits in a failing segment.
+  // Sizing would only repeat what the banner already says, so auto-size waits.
+  const designFails = () => lastItems.some((item) => item.kind === "feasibility" && !item.stale);
+
+  function scheduleAutoSize() {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+    if (!autoToggle.checked) return;
+    autoTimer = setTimeout(() => {
+      autoTimer = null;
+      if (!autoToggle.checked || designFails()) return;
+      sizeCurrent({ auto: true });
+    }, AUTO_SIZE_DEBOUNCE_MS);
+  }
+
+  function cancelAutoSize() {
+    clearTimeout(autoTimer);
+    autoTimer = null;
+    if (inFlightAuto) inFlight?.abort();
   }
 
   const result = createResultView($("view-result"));
@@ -105,12 +160,14 @@ function start(catalogue) {
     await sizeCurrent();
   }
 
-  async function sizeCurrent() {
+  async function sizeCurrent({ auto = false } = {}) {
     inFlight?.abort();
     const controller = new AbortController();
     inFlight = controller;
+    inFlightAuto = auto;
     sizeButton.disabled = true;
-    result.renderLoading();
+    if (result.hasResult()) result.setPending(true); // keep the cards, dim them until the new run lands
+    else result.renderLoading();
     const body = getRequest();
     try {
       const run = await apiPost(API.evtol.size, body, { signal: controller.signal });
@@ -128,13 +185,21 @@ function start(catalogue) {
     } finally {
       if (inFlight === controller) {
         inFlight = null;
+        inFlightAuto = false;
         sizeButton.disabled = false;
+        result.setPending(false);
       }
     }
   }
 
+  autoToggle.checked = loadAutoSize();
+  autoToggle.addEventListener("change", () => {
+    saveAutoSize(autoToggle.checked);
+    if (!autoToggle.checked) cancelAutoSize();
+  });
+
   baselineSelect.addEventListener("change", loadBaseline);
-  sizeButton.addEventListener("click", sizeCurrent);
+  sizeButton.addEventListener("click", () => sizeCurrent());
   $("reset-button").addEventListener("click", loadBaseline);
   document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) sizeCurrent();

@@ -114,3 +114,12 @@ test("bannerItems folds three or more unfixable inputs into one line", () => {
   const two = bannerItems({ design: { [battery.key]: 256, [wingspan.key]: 15, [rotors.key]: 6 }, specs: [battery, wingspan], slices });
   assert.deepEqual(two.map((i) => i.id), [battery.key, wingspan.key]);
 });
+
+test("bannerItems puts the item of the slider just changed first", () => {
+  const specs = [battery, wingspan];
+  const failing = (key) => ({ slice: { ...batterySlice, param: key, constraint: [], segments: [{ lo: 0, hi: 100, status: "diverged", reason: "x" }, { lo: 100, hi: 1000, status: "converged" }], feasible: [[100, 1000]] }, stale: false });
+  const slices = new Map([[battery.key, failing(battery.key)], [wingspan.key, failing(wingspan.key)]]);
+  const design = { [battery.key]: 50, [wingspan.key]: 5 };
+  assert.deepEqual(bannerItems({ design, specs, slices }).map((i) => i.id), [battery.key, wingspan.key]);
+  assert.deepEqual(bannerItems({ design, specs, slices, first: wingspan.key }).map((i) => i.id), [wingspan.key, battery.key]);
+});

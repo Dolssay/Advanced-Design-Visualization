@@ -47,6 +47,12 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
       let v = Number(raw);
       if (!Number.isFinite(v)) return;
       if (spec.integer) v = Math.round(v);
+      // A native `change` fires again when the number box loses focus (e.g. to
+      // click a banner button); the same value must not restart the stream.
+      if (v === values[spec.key]) {
+        if (source !== "number") number.value = fmtValue(v, spec);
+        return;
+      }
       values[spec.key] = v;
       if (source !== "slider") slider.value = v;
       if (source !== "number") number.value = fmtValue(v, spec);

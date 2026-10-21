@@ -16,10 +16,23 @@ export function createResultView(root) {
   root.replaceChildren(el("p", { class: "empty-state", text: "Size a design to see results." }));
 
   function renderLoading(message = "Sizing on the server…") {
+    root.classList.remove("is-pending");
     root.replaceChildren(el("div", { class: "loading" }, [el("span", { class: "spinner", "aria-hidden": "true" }), message]));
   }
 
+  // Auto-size: a new run is on its way; dim the current cards instead of clearing them.
+  function setPending(on) {
+    root.classList.toggle("is-pending", on);
+    root.setAttribute("aria-busy", on ? "true" : "false");
+  }
+
+  function hasResult() {
+    return Boolean(root.querySelector(".kpi-row"));
+  }
+
   function renderError(error) {
+    root.classList.remove("is-pending");
+    root.setAttribute("aria-busy", "false");
     const detail = error.detail || {};
     const title = detail.code === "sizing_failed"
       ? `This design did not size (${detail.status}).`
@@ -34,6 +47,8 @@ export function createResultView(root) {
   }
 
   function render(run, reference) {
+    root.classList.remove("is-pending");
+    root.setAttribute("aria-busy", "false");
     const r = run.result;
     const ref = reference?.result;
     const isReference = reference && reference.run_id === run.run_id;
@@ -85,5 +100,5 @@ export function createResultView(root) {
     if (run.images.length) showImage(run.images.some((i) => i.kind === activeImage) ? activeImage : run.images[0].kind);
   }
 
-  return { render, renderLoading, renderError };
+  return { render, renderLoading, renderError, setPending, hasResult };
 }

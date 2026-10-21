@@ -352,8 +352,26 @@ body {
 
 .panel-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  margin: 0;
+  width: 15px;
+  height: 15px;
 }
 
 .btn {
@@ -420,6 +438,12 @@ body {
 
 .view {
   min-height: 300px;
+}
+
+/* Auto-size: a newer run is on its way; the previous result stays readable but dimmed. */
+.view.is-pending {
+  opacity: 0.45;
+  transition: opacity 0.2s;
 }
 
 .empty-state {

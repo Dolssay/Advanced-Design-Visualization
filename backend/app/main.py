@@ -56,6 +56,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state.baselines.load()
         state.runs = RunStore(settings.runs_dir)
         state.runs.prepare()
+        state.slices = RunStore(settings.runs_dir / "feasibility")  # one cached line per feasibility slice
+        state.slices.prepare()
         state.runner = SizingRunner(settings.sizing_workers, settings.sizing_timeout_s)
         state.runner.start()
         await _warm_up(app)

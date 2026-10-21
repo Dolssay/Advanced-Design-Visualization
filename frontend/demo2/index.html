@@ -27,13 +27,20 @@
       <aside class="d2-panel" aria-label="Design inputs">
         <label class="field-label" for="baseline-select">Baseline aircraft</label>
         <select id="baseline-select" class="select"></select>
+        <ul id="feasibility-banner" class="feasibility-banner" aria-live="polite" aria-label="Why the design may not close"></ul>
+        <label class="switch" for="range-finder">
+          <input type="checkbox" id="range-finder" role="switch" checked />
+          <span>Range finder</span>
+          <span class="switch-hint">shades each slider where the design closes</span>
+        </label>
+        <details id="constraints-box" class="constraints"></details>
         <div id="param-form" class="param-form"></div>
-        <ul id="constraint-warnings" class="warnings" aria-live="polite"></ul>
         <div class="panel-actions">
           <button id="size-button" class="btn btn-primary" type="button">Size design</button>
+          <label class="toggle" for="auto-size"><input type="checkbox" id="auto-size" checked /> Auto-size</label>
           <button id="reset-button" class="btn" type="button">Reset to baseline</button>
         </div>
-        <p class="hint">Ctrl + Enter also sizes the design.</p>
+        <p class="hint">Auto-size re-sizes after each change (not while the banner shows a failing input). Ctrl + Enter also sizes the design.</p>
       </aside>
 
       <main class="d2-main">

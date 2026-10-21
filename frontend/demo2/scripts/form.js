@@ -1,12 +1,16 @@
 // Parameter form built from /api/v1/evtol/parameters.
 // Holds the current design; only values that differ from the baseline are sent
-// as overrides, so a baseline outside the study bounds can still be sized as-is.
+// as overrides. Sliders span the slider range (limit_min/limit_max, widened to
+// include the loaded baseline's value), and each track is shaded by the
+// feasibility slice the server streams for it (setFeasibility).
 
 import { el, fmtValue, withUnit } from "./format.js";
+import { STATUS_LABEL, fmtEdge, segmentAt, shortReason, trackLayers } from "./feasibilityModel.js";
 
 export function createParameterForm(container, catalogue, { onChange } = {}) {
   const specs = catalogue.parameters;
   const controls = new Map();
+  const feasibility = new Map(); // key -> { slice, stale } | null
   let baseline = {};
   let values = {};
 
@@ -21,52 +25,104 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
   function buildRow(spec) {
     const id = `param-${spec.key}`;
     const slider = el("input", {
-      type: "range", min: spec.min, max: spec.max, step: spec.step,
+      type: "range", min: spec.limit_min, max: spec.limit_max, step: spec.step,
       "aria-label": spec.label, class: "param-slider"
     });
     const number = el("input", {
-      type: "number", id, min: spec.min, max: spec.max, step: spec.integer ? 1 : "any", class: "param-number"
+      type: "number", id, min: spec.limit_min, max: spec.limit_max, step: spec.integer ? 1 : "any", class: "param-number"
     });
     const marker = el("span", { class: "param-changed", title: "Changed from baseline", "aria-hidden": "true" });
     const note = el("span", { class: "param-note" });
-    const row = el("div", { class: "param-row" }, [
+    const tip = el("div", { class: "param-tip", hidden: true, "aria-hidden": "true" });
+    const row = el("div", { class: "param-row is-pending" }, [
       el("label", { for: id, class: "param-label", title: spec.description }, [
-        marker, spec.label, spec.unit && spec.unit !== "count" ? el("span", { class: "param-unit", text: ` (${spec.unit})` }) : null
+        marker, spec.label, spec.unit && spec.unit !== "count" ? el("span", { class: "param-unit", text: ` (${spec.unit})` }) : null,
+        // Shown by CSS while this slider's feasibility is missing or re-checking; the banner is the aria-live signal.
+        el("span", { class: "param-busy", "aria-hidden": "true" }, [el("span", { class: "spinner" }), "Checking"])
       ]),
       el("div", { class: "param-inputs" }, [slider, number]),
-      note
+      note,
+      tip
     ]);
 
     const set = (raw, source) => {
       let v = Number(raw);
       if (!Number.isFinite(v)) return;
       if (spec.integer) v = Math.round(v);
+      // A native `change` fires again when the number box loses focus (e.g. to
+      // click a banner button); the same value must not restart the stream.
+      if (v === values[spec.key]) {
+        if (source !== "number") number.value = fmtValue(v, spec);
+        return;
+      }
       values[spec.key] = v;
       if (source !== "slider") slider.value = v;
       if (source !== "number") number.value = fmtValue(v, spec);
       refresh(spec.key);
-      onChange?.(getDesign());
+      onChange?.(getDesign(), spec.key);
     };
     slider.addEventListener("input", () => set(slider.value, "slider"));
     number.addEventListener("change", () => set(number.value, "number"));
-    controls.set(spec.key, { spec, slider, number, row, note, set });
+    slider.addEventListener("pointermove", (event) => showTip(spec.key, event));
+    slider.addEventListener("pointerleave", () => { tip.hidden = true; });
+    controls.set(spec.key, { spec, slider, number, row, note, tip, set, range: [spec.limit_min, spec.limit_max] });
     return row;
+  }
+
+  function showTip(key, event) {
+    const { spec, slider, tip, range: [lo, hi] } = controls.get(key);
+    const entry = feasibility.get(key);
+    if (!entry) { tip.hidden = true; return; }
+    const rect = slider.getBoundingClientRect();
+    const f = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
+    const seg = segmentAt(entry.slice, lo + f * (hi - lo));
+    if (!seg) { tip.hidden = true; return; }
+    const unit = spec.unit === "count" ? "" : spec.unit;
+    const why = seg.reason ? `: ${shortReason(seg.reason)}` : "";
+    tip.textContent = `${fmtEdge(seg.lo, spec)}–${withUnit(fmtEdge(seg.hi, spec), unit)} · ${STATUS_LABEL[seg.status] || seg.status}${why}${entry.stale ? " (re-checking)" : ""}`;
+    tip.style.left = `${Math.round(f * rect.width)}px`;
+    tip.hidden = false;
   }
 
   function refresh(key) {
     const { spec, row, note } = controls.get(key);
     const v = values[key];
     const changed = Math.abs(v - baseline[key]) > 1e-9;
-    const outside = v < spec.min - 1e-9 || v > spec.max + 1e-9;
     row.classList.toggle("is-changed", changed);
-    row.classList.toggle("is-outside", outside);
-    note.textContent = outside
-      ? `Baseline value ${fmtValue(v, spec)} is outside the study range ${spec.min}–${spec.max}.`
-      : changed ? `Baseline: ${withUnit(fmtValue(baseline[key], spec), spec.unit === "count" ? "" : spec.unit)}` : "";
+    note.textContent = changed ? `Baseline: ${withUnit(fmtValue(baseline[key], spec), spec.unit === "count" ? "" : spec.unit)}` : "";
+    const entry = feasibility.get(key);
+    const seg = entry ? segmentAt(entry.slice, v) : null;
+    row.classList.toggle("is-infeasible", Boolean(seg && seg.status !== "converged"));
+  }
+
+  // The slider range of one parameter: the catalogue's limit_min/limit_max,
+  // widened just enough to include the baseline's own value (same rule as
+  // effective_range() on the backend).
+  function setRange(key, baselineValue) {
+    const control = controls.get(key);
+    const { spec, slider, number } = control;
+    const lo = Math.min(spec.limit_min, baselineValue);
+    const hi = Math.max(spec.limit_max, baselineValue);
+    control.range = [lo, hi];
+    slider.min = lo; slider.max = hi;
+    number.min = lo; number.max = hi;
+    paint(key);
+  }
+
+  function paint(key) {
+    const { slider, row, range: [lo, hi] } = controls.get(key);
+    const entry = feasibility.get(key);
+    row.classList.toggle("is-pending", !entry);
+    row.classList.toggle("is-stale", Boolean(entry?.stale));
+    if (entry) slider.style.setProperty("--track", trackLayers(entry.slice, lo, hi));
+    else slider.style.removeProperty("--track");
   }
 
   function setValues(next, { asBaseline = false } = {}) {
-    if (asBaseline) baseline = { ...next };
+    if (asBaseline) {
+      baseline = { ...next };
+      for (const key of Object.keys(next)) if (controls.has(key)) setRange(key, next[key]);
+    }
     values = { ...values, ...next };
     for (const [key, { slider, number, spec }] of controls) {
       if (!(key in values)) continue;
@@ -74,7 +130,17 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
       number.value = fmtValue(values[key], spec);
       refresh(key);
     }
-    onChange?.(getDesign());
+    const keys = Object.keys(next);
+    onChange?.(getDesign(), !asBaseline && keys.length === 1 ? keys[0] : null);
+  }
+
+  // entry = { slice, stale } from the feasibility stream, or null while unknown.
+  function setFeasibility(key, entry) {
+    if (!controls.has(key)) return;
+    if (entry) feasibility.set(key, entry);
+    else feasibility.delete(key);
+    paint(key);
+    refresh(key);
   }
 
   function getDesign() {
@@ -89,7 +155,11 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
     return overrides;
   }
 
-  return { setValues, getDesign, getOverrides, specs };
+  return {
+    setValues, getDesign, getOverrides, setFeasibility, specs,
+    range: (key) => controls.get(key).range,
+    getBaseline: () => ({ ...baseline })
+  };
 }
 
 // Mirrors check_constraints() in backend/app/services/evtol_model.py for live

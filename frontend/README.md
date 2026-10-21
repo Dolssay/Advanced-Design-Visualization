@@ -26,6 +26,11 @@ const catalogue = await apiGet(API.evtol.parameters);
 const run = await apiPost(API.evtol.size, { baseline: "Archer_Midnight", overrides: { payload_kg: 480 } });
 ```
 
+`apiStream(path, body, { onLine })` reads an NDJSON response line by line; Demo 2's
+slider shading uses it on `/api/v1/evtol/feasibility` (`demo2/scripts/feasibility.js`).
+The pure parts of that feature (`demo2/scripts/feasibilityModel.js`) are covered by
+`npm test` (`node --test`).
+
 `endpoints.js` holds every backend URL as written in `backend/app/api/paths.py`.
 Add a route in both places; `backend/tests/test_route_contract.py` checks they match.
 Paths are relative (`/api/...`), so the same build works behind Vite, nginx or a

@@ -20,6 +20,7 @@ export const API = {
     runImage: (run_id, kind) => `/api/v1/evtol/runs/${enc(run_id)}/images/${enc(kind)}.png`,
     sweep: "/api/v1/evtol/sweep",
     sensitivity: "/api/v1/evtol/sensitivity",
-    ensemble: "/api/v1/evtol/ensemble"
+    ensemble: "/api/v1/evtol/ensemble",
+    feasibility: "/api/v1/evtol/feasibility"
   }
 };

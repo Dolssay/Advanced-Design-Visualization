@@ -11,15 +11,38 @@ const KPIS = [
   { key: "ld", label: "Cruise L/D", unit: "", digits: 2, get: (r) => r.aero?.cruise_l_p_d }
 ];
 
-export function createResultView(root) {
+export function createResultView(root, { onSize } = {}) {
   let activeImage = "layout";
+  // Shown beside the plot tabs when the inputs moved since this run was drawn.
+  const staleNote = el("p", { class: "stale-note", role: "status", hidden: true }, [
+    el("span", { class: "stale-dot", "aria-hidden": "true" }),
+    "Showing the last sized design, not the current inputs",
+    el("button", { class: "stale-action", type: "button", text: "Size now", onclick: () => onSize?.() })
+  ]);
   root.replaceChildren(el("p", { class: "empty-state", text: "Size a design to see results." }));
 
   function renderLoading(message = "Sizing on the server…") {
+    root.classList.remove("is-pending");
     root.replaceChildren(el("div", { class: "loading" }, [el("span", { class: "spinner", "aria-hidden": "true" }), message]));
   }
 
+  // Auto-size: a new run is on its way; dim the current cards instead of clearing them.
+  function setPending(on) {
+    root.classList.toggle("is-pending", on);
+    root.setAttribute("aria-busy", on ? "true" : "false");
+  }
+
+  function setStale(on) {
+    staleNote.hidden = !on;
+  }
+
+  function hasResult() {
+    return Boolean(root.querySelector(".kpi-row"));
+  }
+
   function renderError(error) {
+    root.classList.remove("is-pending");
+    root.setAttribute("aria-busy", "false");
     const detail = error.detail || {};
     const title = detail.code === "sizing_failed"
       ? `This design did not size (${detail.status}).`
@@ -34,6 +57,8 @@ export function createResultView(root) {
   }
 
   function render(run, reference) {
+    root.classList.remove("is-pending");
+    root.setAttribute("aria-busy", "false");
     const r = run.result;
     const ref = reference?.result;
     const isReference = reference && reference.run_id === run.run_id;
@@ -64,6 +89,7 @@ export function createResultView(root) {
 
     const imageTabs = el("div", { class: "image-tabs", role: "tablist", "aria-label": "Plots" });
     const figure = el("figure", { class: "plot-figure" });
+    const busy = el("div", { class: "plot-busy", "aria-hidden": "true" }, [el("span", { class: "spinner" }), "Sizing new design…"]);
     const showImage = (kind) => {
       activeImage = kind;
       const image = run.images.find((i) => i.kind === kind) || run.images[0];
@@ -81,9 +107,10 @@ export function createResultView(root) {
       imageTabs.append(el("button", { class: "image-tab", role: "tab", "data-kind": image.kind, type: "button", text: image.label, onclick: () => showImage(image.kind) }));
     }
 
-    root.replaceChildren(...[kpis, statusLine, warnings, el("div", { class: "card" }, [imageTabs, figure])].filter(Boolean));
+    const plotHead = el("div", { class: "plot-head" }, [imageTabs, staleNote]);
+    root.replaceChildren(...[kpis, statusLine, warnings, el("div", { class: "card plot-card" }, [plotHead, figure, busy])].filter(Boolean));
     if (run.images.length) showImage(run.images.some((i) => i.kind === activeImage) ? activeImage : run.images[0].kind);
   }
 
-  return { render, renderLoading, renderError };
+  return { render, renderLoading, renderError, setPending, setStale, hasResult };
 }

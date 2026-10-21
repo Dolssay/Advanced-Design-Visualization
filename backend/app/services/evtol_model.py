@@ -21,6 +21,7 @@ if str(EVTOLPY_DIR) not in sys.path:  # PYTHONPATH normally covers this; fallbac
     sys.path.insert(0, str(EVTOLPY_DIR))
 
 from evtol.aircraft import Aircraft  # noqa: E402
+from evtol.aircraft_modules import aircraft_iteration  # noqa: E402
 
 CATALOGUE_PATH = Path(__file__).resolve().parents[1] / "params" / "evtol_parameters.json"
 
@@ -93,6 +94,14 @@ def design_values(config: dict[str, Any], catalogue: dict[str, Any]) -> dict[str
     return {p["key"]: config[p["section"]][p["key"]] for p in catalogue["parameters"]}
 
 
+def effective_range(spec: dict[str, Any], baseline_value: float) -> tuple[float, float]:
+    """The slider range of one parameter: ``limit_min``/``limit_max`` from the
+    catalogue, widened just enough to include the baseline's own value (some
+    reference aircraft sit outside the presets, e.g. NASA TR's 1200 s reserve)."""
+    v0 = float(baseline_value)
+    return min(float(spec["limit_min"]), v0), max(float(spec["limit_max"]), v0)
+
+
 class OverrideError(ValueError):
     """Raised when requested overrides are unknown or out of range."""
 
@@ -111,7 +120,8 @@ def apply_overrides(
 
     Mirrors the field mapping in the old EnsembleDataScript and enforces the
     rotor-count coupling: tilt = lift (C5) and rotor_count = lift + tilt (C4).
-    ``enforce_bounds=False`` skips the catalogue min/max check; sensitivity and
+    Values are checked against ``effective_range()`` (the slider range, not the
+    study box). ``enforce_bounds=False`` skips that check; sensitivity and
     ensemble runs use it to perturb baselines that sit outside the Archer bounds.
     """
     index = catalogue_index(catalogue)
@@ -131,12 +141,14 @@ def apply_overrides(
         if not math.isfinite(value):
             errors.append({"key": key, "message": f"{spec['label']} must be finite."})
             continue
-        if enforce_bounds and not spec["min"] <= value <= spec["max"]:
-            errors.append({
-                "key": key,
-                "message": f"{spec['label']} = {value:g} is outside {spec['min']:g}-{spec['max']:g} {spec['unit']}".strip() + ".",
-            })
-            continue
+        if enforce_bounds:
+            lo, hi = effective_range(spec, baseline[spec["section"]][key])
+            if not lo <= value <= hi:
+                errors.append({
+                    "key": key,
+                    "message": f"{spec['label']} = {value:g} is outside {lo:g}-{hi:g} {spec['unit']}".strip() + ".",
+                })
+                continue
         if spec["integer"]:
             if value != round(value):
                 errors.append({"key": key, "message": f"{spec['label']} must be a whole number."})
@@ -171,6 +183,61 @@ def check_constraints(config: dict[str, Any]) -> list[dict[str, str]]:
         if need > ac["wingspan_m"] + 1e-9:
             out.append({"id": "C6", "message": f"{n} rotors of {d:g} m need {need:.2f} m of span; wingspan is {ac['wingspan_m']:g} m."})
     return out
+
+
+def constraint_interval(config: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    """The C1-C6 constraints solved for one parameter with every other input fixed.
+
+    Returns one entry per constraint that involves ``key``, each a one-sided bound
+    ``{"id", "lo", "hi", "text"}`` (``None`` for the open side). The allowed
+    interval is the intersection of all of them; an empty list means unconstrained.
+    """
+    ac, prop = config["aircraft"], config["propulsion"]
+    span, dv, fl, fw = ac["wingspan_m"], ac["d_value_m"], ac["fuselage_l_m"], ac["fuselage_w_m"]
+    n, d = prop.get("lift_rotor_count", 0), prop.get("rotor_diameter_m", 0)
+    clearance = (n - 2) * 0.1 if n else 0.0
+    out: list[dict[str, Any]] = []
+
+    def bound(cid: str, text: str, lo: float | None = None, hi: float | None = None) -> None:
+        out.append({"id": cid, "lo": None if lo is None else round(lo, 6), "hi": None if hi is None else round(hi, 6),
+                    "text": text})
+
+    if key == "wingspan_m":
+        bound("C1", f"Wingspan must not exceed the D-value {dv:g} m.", hi=dv)
+        if n:
+            need = d * n + clearance
+            bound("C6", f"{n} rotors of {d:g} m need {need:.2f} m of span.", lo=need)
+    elif key == "d_value_m":
+        bound("C1", f"D-value must be at least the wingspan {span:g} m.", lo=span)
+        bound("C3", f"D-value must be at least the fuselage length {fl:g} m.", lo=fl)
+    elif key == "fuselage_l_m":
+        bound("C2", f"Fuselage length must be at least the width {fw:g} m.", lo=fw)
+        bound("C3", f"Fuselage length must not exceed the D-value {dv:g} m.", hi=dv)
+    elif key == "fuselage_w_m":
+        bound("C2", f"Fuselage width must not exceed the length {fl:g} m.", hi=fl)
+    elif key == "rotor_diameter_m" and n:
+        hi = (span - clearance) / n
+        bound("C6", f"{n} rotors must fit the {span:g} m wingspan: diameter at most {hi:.2f} m.", hi=hi)
+    elif key == "lift_rotor_count" and d > 0:
+        # d*n + (n-2)*0.1 <= span  <=>  n <= (span + 0.2) / (d + 0.1)
+        hi = math.floor((span + 0.2) / (d + 0.1) + 1e-9)
+        bound("C6", f"Rotors of {d:g} m must fit the {span:g} m wingspan: at most {hi} lift rotors.", hi=hi)
+    return out
+
+
+STATUS_CLASSES = ("converged", "max_iter", "diverged", "error")
+
+
+def status_class(status: str | None) -> str:
+    """Map evtolpy's raw status (an exception class name or Success/NotConverged)
+    onto the shared vocabulary used by every Demo 2 endpoint."""
+    if status == "Success":
+        return "converged"
+    if status == "NotConverged":
+        return "max_iter"
+    if status == "ValueError":
+        return "diverged"
+    return "error"
 
 
 # --------------------------------------------------------------------------- sizing
@@ -320,12 +387,17 @@ def _render_images(ac: Aircraft, outputs: dict[str, Any], name: str, image_dir: 
     return written
 
 
-def size_design(config: dict[str, Any], name: str = "Aircraft", image_dir: str | None = None) -> dict[str, Any]:
+def size_design(config: dict[str, Any], name: str = "Aircraft", image_dir: str | None = None,
+                max_iter: int = 150) -> dict[str, Any]:
     """Size one configuration. Never raises for model failures: the status field
     says what happened, so batch callers can keep going.
 
     Runs inside a worker process. Writes the config to a private temp file
-    because ``Aircraft()`` only accepts a path.
+    because ``Aircraft()`` only accepts a path. ``max_iter`` caps the MTOW
+    iteration (evtolpy's default is 150); a design that has not converged by
+    then reports ``NotConverged``. Feasibility scans use a lower cap because
+    designs near a boundary creep towards the cap and cost far more than the
+    ones that close or diverge early.
     """
     result: dict[str, Any] = {"status": "Success", "message": None}
     with tempfile.TemporaryDirectory(prefix="evtol-") as tmp:
@@ -334,7 +406,7 @@ def size_design(config: dict[str, Any], name: str = "Aircraft", image_dir: str |
             json.dump(config, fh)
         try:
             ac = FastAircraft(path)
-            mtow, history = ac._iterate_mtow()
+            mtow, history = aircraft_iteration._iterate_mtow(ac, max_iter=max_iter)
         except Exception as exc:  # evtolpy raises ValueError for diverging/non-physical designs
             return {"status": type(exc).__name__, "message": str(exc), "mtow_kg": None, "iterations": None}
 
@@ -392,6 +464,6 @@ SUMMARY_OUTPUTS = {
 }
 
 
-def size_summary(config: dict[str, Any]) -> dict[str, Any]:
+def size_summary(config: dict[str, Any], max_iter: int = 150) -> dict[str, Any]:
     """Worker entry point for batch calls: size without images, return scalars."""
-    return summary(size_design(config))
+    return summary(size_design(config, max_iter=max_iter))

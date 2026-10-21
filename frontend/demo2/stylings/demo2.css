@@ -168,7 +168,8 @@ body {
 
 /* Slider track shaded by the feasibility slice: --track is a gradient built by
    trackLayers() in scripts/feasibilityModel.js (green closes, red fails, amber
-   hatched for a layout constraint). No slice yet: grey, pulsing. Stale: dimmed. */
+   hatched for a layout constraint). No slice yet, or range finder off: the plain
+   track, maroon up to the thumb (--fill, set in form.js) and grey after it. */
 .param-slider {
   flex: 1 1 auto;
   min-width: 0;
@@ -184,34 +185,32 @@ body {
 .param-slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: 3px;
-  background: var(--track, var(--panel-2));
+  background: var(--track, linear-gradient(90deg, var(--accent) 0 var(--fill, 0%), var(--line) var(--fill, 0%) 100%));
 }
 
 .param-slider::-moz-range-track {
   height: 6px;
   border-radius: 3px;
-  background: var(--track, var(--panel-2));
+  background: var(--track, linear-gradient(90deg, var(--accent) 0 var(--fill, 0%), var(--line) var(--fill, 0%) 100%));
 }
 
 .param-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 14px;
-  height: 14px;
-  margin-top: -4px;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
   border-radius: 50%;
-  background: var(--ink);
-  border: 2px solid var(--surface);
-  box-sizing: border-box;
+  background: var(--accent);
+  border: 0;
 }
 
 .param-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: var(--ink);
-  border: 2px solid var(--surface);
-  box-sizing: border-box;
+  background: var(--accent);
+  border: 0;
 }
 
 .param-slider:focus-visible {

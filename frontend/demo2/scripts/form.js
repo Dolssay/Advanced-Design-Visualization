@@ -85,8 +85,10 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
   }
 
   function refresh(key) {
-    const { spec, row, note } = controls.get(key);
+    const { spec, row, note, slider, range: [lo, hi] } = controls.get(key);
     const v = values[key];
+    // Filled part of the plain track (range finder off or no slice yet).
+    slider.style.setProperty("--fill", `${hi > lo ? ((v - lo) / (hi - lo)) * 100 : 0}%`);
     const changed = Math.abs(v - baseline[key]) > 1e-9;
     row.classList.toggle("is-changed", changed);
     note.textContent = changed ? `Baseline: ${withUnit(fmtValue(baseline[key], spec), spec.unit === "count" ? "" : spec.unit)}` : "";

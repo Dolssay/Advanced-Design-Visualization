@@ -29,6 +29,7 @@ def test_baselines(client):
     assert {"Archer_Midnight", "Joby_s4", "NASA_LC", "NASA_TR", "Wisk", "ehang"} <= set(names)
     archer = next(b for b in listing if b["name"] == "Archer_Midnight")
     assert archer["design"]["payload_kg"] == 453.0
+    assert archer["rotors"] == {"lift_rotor_count": 6, "tilt_rotor_count": 6, "rotor_count": 12}
     assert client.get("/api/v1/evtol/baselines/Joby_s4").json()["aircraft"]
     assert client.get("/api/v1/evtol/baselines/nope").status_code == 404
 

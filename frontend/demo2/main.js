@@ -6,6 +6,7 @@ import { constraintWarnings, createParameterForm } from "./scripts/form.js";
 import { createFeasibility } from "./scripts/feasibility.js";
 import { bannerItems } from "./scripts/feasibilityModel.js";
 import { createFeasibilityBanner } from "./scripts/banner.js";
+import { createConstraintsBox } from "./scripts/constraints.js";
 import { el } from "./scripts/format.js";
 import { createResultView } from "./scripts/resultView.js";
 import { createSweepView } from "./scripts/sweepView.js";
@@ -17,11 +18,13 @@ const chip = $("status-chip");
 const baselineSelect = $("baseline-select");
 const sizeButton = $("size-button");
 const autoToggle = $("auto-size");
+const rangeToggle = $("range-finder");
 
 // Auto-size: call /size by itself after the sliders settle. A cold /size renders
 // five plots and takes ~0.5-0.7 s, so the debounce is longer than the 600 ms one
 // for feasibility: the moved slider's verdict is in before we decide to size.
 const AUTO_SIZE_KEY = "demo2.autoSize";
+const RANGE_FINDER_KEY = "demo2.rangeFinder";
 const AUTO_SIZE_DEBOUNCE_MS = 900;
 
 let baselines = [];
@@ -32,19 +35,20 @@ let autoTimer = null;
 let sizeError = null; // message of the last failed /size for the current design, shown in the banner
 let lastItems = []; // banner items for the current design
 let lastChanged = null; // the slider changed most recently; its banner item leads
+let shownRequest = null; // JSON of the request behind the result on screen
 
-function loadAutoSize() {
+function loadToggle(key) {
   try {
-    const stored = localStorage.getItem(AUTO_SIZE_KEY);
+    const stored = localStorage.getItem(key);
     return stored === null ? true : stored === "1";
   } catch {
     return true;
   }
 }
 
-function saveAutoSize(on) {
+function saveToggle(key, on) {
   try {
-    localStorage.setItem(AUTO_SIZE_KEY, on ? "1" : "0");
+    localStorage.setItem(key, on ? "1" : "0");
   } catch {
     // private mode or blocked storage: the toggle still works for this page load
   }
@@ -85,14 +89,17 @@ function start(catalogue) {
         lastChanged = changedKey;
       }
       redrawBanner();
-      feasibility.schedule(changedKey);
+      constraints.render(design);
+      if (rangeToggle.checked) feasibility.schedule(changedKey);
       if (changedKey) scheduleAutoSize(); // baseline loads and ensemble picks size on their own
+      updateStale();
     }
   });
   const getRequest = () => ({ baseline: baselineSelect.value, overrides: form.getOverrides() });
 
   // Reasons banner (top of the panel) and the slider shading share one data source:
   // the feasibility slices streamed for the current design.
+  const constraints = createConstraintsBox($("constraints-box"));
   const banner = createFeasibilityBanner($("feasibility-banner"), { onFix: (patch) => form.setValues(patch) });
   const feasibility = createFeasibility(specs.map((s) => s.key), {
     getRequest,
@@ -103,6 +110,8 @@ function start(catalogue) {
   function redrawBanner() {
     const design = form.getDesign();
     lastItems = bannerItems({ design, specs, slices: feasibility.all(), warnings: constraintWarnings(design), sizeError, first: lastChanged });
+    // Range finder off: no slices will arrive, so drop the "Checking feasible ranges" line.
+    if (!rangeToggle.checked) lastItems = lastItems.filter((item) => item.kind !== "pending");
     banner.render(lastItems);
   }
 
@@ -116,9 +125,16 @@ function start(catalogue) {
     if (!autoToggle.checked) return;
     autoTimer = setTimeout(() => {
       autoTimer = null;
-      if (!autoToggle.checked || designFails()) return;
+      if (!autoToggle.checked || designFails()) return updateStale();
       sizeCurrent({ auto: true });
     }, AUTO_SIZE_DEBOUNCE_MS);
+  }
+
+  // The plot is out of date when the inputs moved since it was sized and no
+  // sizing is queued or running (auto-size off, or held back by a failing input).
+  function updateStale() {
+    const moved = shownRequest !== null && JSON.stringify(getRequest()) !== shownRequest;
+    result.setStale(moved && !inFlight && !autoTimer);
   }
 
   function cancelAutoSize() {
@@ -127,7 +143,7 @@ function start(catalogue) {
     if (inFlightAuto) inFlight?.abort();
   }
 
-  const result = createResultView($("view-result"));
+  const result = createResultView($("view-result"), { onSize: () => sizeCurrent() });
   createSweepView($("view-sweep"), catalogue, {
     getRequest,
     onPick: (key, value) => { form.setValues({ [key]: value }); showView("result"); sizeCurrent(); }
@@ -155,6 +171,7 @@ function start(catalogue) {
     const b = baselines.find((x) => x.name === baselineSelect.value);
     feasibility.reset();
     sizeError = null;
+    constraints.setBaselineRotors(b.rotors);
     form.setValues(b.design, { asBaseline: true }); // onChange -> schedule(null): all 12 slices
     reference = null;
     await sizeCurrent();
@@ -165,6 +182,7 @@ function start(catalogue) {
     const controller = new AbortController();
     inFlight = controller;
     inFlightAuto = auto;
+    updateStale();
     sizeButton.disabled = true;
     if (result.hasResult()) result.setPending(true); // keep the cards, dim them until the new run lands
     else result.renderLoading();
@@ -173,6 +191,7 @@ function start(catalogue) {
       const run = await apiPost(API.evtol.size, body, { signal: controller.signal });
       if (!Object.keys(body.overrides).length) reference = run;
       sizeError = null;
+      shownRequest = JSON.stringify(body);
       result.render(run, reference);
       redrawBanner();
     } catch (error) {
@@ -188,14 +207,30 @@ function start(catalogue) {
         inFlightAuto = false;
         sizeButton.disabled = false;
         result.setPending(false);
+        updateStale();
       }
     }
   }
 
-  autoToggle.checked = loadAutoSize();
+  // Off: abort the stream and clear the shading; on: stream all twelve slices again.
+  const applyRangeFinder = () => {
+    $("param-form").classList.toggle("range-off", !rangeToggle.checked);
+    if (rangeToggle.checked) feasibility.schedule(null);
+    else feasibility.reset();
+    redrawBanner();
+  };
+  rangeToggle.checked = loadToggle(RANGE_FINDER_KEY);
+  $("param-form").classList.toggle("range-off", !rangeToggle.checked);
+  rangeToggle.addEventListener("change", () => {
+    saveToggle(RANGE_FINDER_KEY, rangeToggle.checked);
+    applyRangeFinder();
+  });
+
+  autoToggle.checked = loadToggle(AUTO_SIZE_KEY);
   autoToggle.addEventListener("change", () => {
-    saveAutoSize(autoToggle.checked);
+    saveToggle(AUTO_SIZE_KEY, autoToggle.checked);
     if (!autoToggle.checked) cancelAutoSize();
+    updateStale();
   });
 
   baselineSelect.addEventListener("change", loadBaseline);

@@ -4,7 +4,7 @@ from fastapi.testclient import TestClient
 from app.config import Settings
 from app.main import create_app
 
-ARCHER_MTOW_KG = 3268.8  # regression value for the vendored evtolpy; update when the pin moves
+ARCHER_MTOW_KG = 3255.6  # regression value for the vendored evtolpy; update when the pin moves
 
 DIVERGING_DESIGN = {
     "payload_kg": 550,

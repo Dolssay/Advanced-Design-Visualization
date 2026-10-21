@@ -82,7 +82,9 @@ def list_baselines(request: Request) -> dict:
     store = request.app.state.baselines
     return {
         "baselines": [
-            {"name": name, "label": _label(name), "design": design_values(store.get(name), catalogue)}
+            {"name": name, "label": _label(name), "design": design_values(store.get(name), catalogue),
+             # Tilt and total rotor counts are not sliders; the C4/C5 rows of the constraints box need them.
+             "rotors": {k: store.get(name)["propulsion"].get(k) for k in ("lift_rotor_count", "tilt_rotor_count", "rotor_count")}}
             for name in store.names()
         ]
     }

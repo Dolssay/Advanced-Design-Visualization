@@ -36,7 +36,9 @@ export function createParameterForm(container, catalogue, { onChange } = {}) {
     const tip = el("div", { class: "param-tip", hidden: true, "aria-hidden": "true" });
     const row = el("div", { class: "param-row is-pending" }, [
       el("label", { for: id, class: "param-label", title: spec.description }, [
-        marker, spec.label, spec.unit && spec.unit !== "count" ? el("span", { class: "param-unit", text: ` (${spec.unit})` }) : null
+        marker, spec.label, spec.unit && spec.unit !== "count" ? el("span", { class: "param-unit", text: ` (${spec.unit})` }) : null,
+        // Shown by CSS while this slider's feasibility is missing or re-checking; the banner is the aria-live signal.
+        el("span", { class: "param-busy", "aria-hidden": "true" }, [el("span", { class: "spinner" }), "Checking"])
       ]),
       el("div", { class: "param-inputs" }, [slider, number]),
       note,

@@ -232,7 +232,28 @@ body {
 }
 
 .param-row.is-stale .param-slider {
-  opacity: 0.45;
+  animation: feas-pulse 1.4s ease-in-out infinite;
+}
+
+/* "Checking" beside the label while this slider's slice is missing or stale. */
+.param-busy {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.param-row.is-pending .param-busy,
+.param-row.is-stale .param-busy {
+  display: inline-flex;
+}
+
+.param-busy .spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
 }
 
 @keyframes feas-pulse {
@@ -241,9 +262,14 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .param-row.is-pending .param-slider {
+  .param-row.is-pending .param-slider,
+  .param-row.is-stale .param-slider {
     animation: none;
     opacity: 0.6;
+  }
+
+  .spinner {
+    animation-duration: 2.4s;
   }
 }
 
@@ -350,6 +376,209 @@ body {
   border-color: var(--line);
 }
 
+/* Range finder switch, above the constraints box. */
+.switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 17px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch input::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.15s;
+}
+
+.switch input:checked {
+  background: var(--ink);
+}
+
+.switch input:checked::before {
+  transform: translateX(13px);
+}
+
+.switch input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch-hint {
+  flex-basis: 100%;
+  padding-left: 38px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Range finder off: plain grey tracks, no "Checking" pulse. */
+.range-off .param-row.is-pending .param-slider,
+.range-off .param-row.is-stale .param-slider {
+  animation: none;
+  opacity: 1;
+}
+
+.range-off .param-row .param-busy {
+  display: none;
+}
+
+/* Read-only constraints box: a disclosure between the banner and the inputs. */
+.constraints {
+  margin: 0 0 18px; /* clear gap before the first input group */
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.constraints-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.constraints-summary::-webkit-details-marker {
+  display: none;
+}
+
+.constraints-summary::after {
+  content: "▾";
+  margin-left: 4px;
+  color: var(--muted);
+}
+
+.constraints[open] .constraints-summary::after {
+  content: "▴";
+}
+
+/* Opening: the box grows downward where ::details-content is supported, and the
+   rows slide in everywhere. */
+.constraints {
+  interpolate-size: allow-keywords;
+}
+
+.constraints::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete;
+}
+
+.constraints[open]::details-content {
+  block-size: auto;
+}
+
+.constraints[open] > :not(summary) {
+  animation: constraints-drop 0.25s ease-out;
+}
+
+@keyframes constraints-drop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constraints::details-content { transition: none; }
+  .constraints[open] > :not(summary) { animation: none; }
+}
+
+.constraints-summary:hover {
+  background: var(--panel-2);
+}
+
+.constraints-summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.constraints-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.constraints-count.is-failing {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.constraints-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px;
+}
+
+.constraint {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-top: 1px solid var(--line-soft);
+}
+
+.constraint-id {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.constraint-now {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.constraint-state {
+  padding: 1px 7px;
+  font-size: 11.5px;
+  border-radius: 10px;
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.constraint.is-failing .constraint-state {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.constraints-note {
+  margin: 0;
+  padding: 6px 10px 9px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 .panel-actions {
   display: flex;
   flex-wrap: wrap;
@@ -440,10 +669,46 @@ body {
   min-height: 300px;
 }
 
-/* Auto-size: a newer run is on its way; the previous result stays readable but dimmed. */
-.view.is-pending {
-  opacity: 0.45;
+/* A newer run is on its way: the previous result stays readable but dimmed,
+   and the plot carries a "Sizing" overlay that is not dimmed. */
+.view .kpi-row,
+.view .run-meta,
+.view .warnings,
+.view .plot-head,
+.view .plot-figure {
   transition: opacity 0.2s;
+}
+
+.view.is-pending .kpi-row,
+.view.is-pending .run-meta,
+.view.is-pending .warnings,
+.view.is-pending .plot-head,
+.view.is-pending .plot-figure {
+  opacity: 0.4;
+}
+
+.plot-card {
+  position: relative;
+}
+
+.plot-busy {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translate(-50%, -50%);
+}
+
+.view.is-pending .plot-busy {
+  display: flex;
 }
 
 .empty-state {
@@ -536,11 +801,65 @@ body {
   padding: 12px;
 }
 
+.plot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .image-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 10px;
+}
+
+/* The plot no longer matches the inputs (auto-size off or held back). */
+.stale-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 4px 4px 10px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--warn-bg);
+  border-radius: var(--radius);
+}
+
+.stale-note[hidden] {
+  display: none;
+}
+
+.stale-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: none;
+}
+
+.stale-action {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.stale-action:hover {
+  background: var(--panel-2);
+}
+
+.stale-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .image-tab {

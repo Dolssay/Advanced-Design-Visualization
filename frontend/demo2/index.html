@@ -28,6 +28,12 @@
         <label class="field-label" for="baseline-select">Baseline aircraft</label>
         <select id="baseline-select" class="select"></select>
         <ul id="feasibility-banner" class="feasibility-banner" aria-live="polite" aria-label="Why the design may not close"></ul>
+        <label class="switch" for="range-finder">
+          <input type="checkbox" id="range-finder" role="switch" checked />
+          <span>Range finder</span>
+          <span class="switch-hint">shades each slider where the design closes</span>
+        </label>
+        <details id="constraints-box" class="constraints"></details>
         <div id="param-form" class="param-form"></div>
         <div class="panel-actions">
           <button id="size-button" class="btn btn-primary" type="button">Size design</button>

@@ -28,6 +28,7 @@ EVTOL_RUN_IMAGE = f"{EVTOL}/runs/{{run_id}}/images/{{kind}}.png"
 EVTOL_SWEEP = f"{EVTOL}/sweep"
 EVTOL_SENSITIVITY = f"{EVTOL}/sensitivity"
 EVTOL_ENSEMBLE = f"{EVTOL}/ensemble"
+EVTOL_FEASIBILITY = f"{EVTOL}/feasibility"
 
 
 def run_image_url(run_id: str, kind: str) -> str:

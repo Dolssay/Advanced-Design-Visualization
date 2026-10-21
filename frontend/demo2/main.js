@@ -3,6 +3,9 @@ import "../shared/d3-global.js";
 import { API } from "../shared/api/endpoints.js";
 import { apiGet, apiPost } from "../shared/api/client.js";
 import { constraintWarnings, createParameterForm } from "./scripts/form.js";
+import { createFeasibility } from "./scripts/feasibility.js";
+import { bannerItems } from "./scripts/feasibilityModel.js";
+import { createFeasibilityBanner } from "./scripts/banner.js";
 import { el } from "./scripts/format.js";
 import { createResultView } from "./scripts/resultView.js";
 import { createSweepView } from "./scripts/sweepView.js";
@@ -13,11 +16,11 @@ const $ = (id) => document.getElementById(id);
 const chip = $("status-chip");
 const baselineSelect = $("baseline-select");
 const sizeButton = $("size-button");
-const warningsList = $("constraint-warnings");
 
 let baselines = [];
 let reference = null; // sized baseline, for deltas
 let inFlight = null;
+let sizeError = null; // message of the last failed /size, shown in the banner until the next success
 
 async function init() {
   try {
@@ -45,14 +48,29 @@ function setChip(info) {
 }
 
 function start(catalogue) {
-  const specByKey = Object.fromEntries(catalogue.parameters.map((p) => [p.key, p]));
+  const specs = catalogue.parameters;
+  const specByKey = Object.fromEntries(specs.map((p) => [p.key, p]));
   const form = createParameterForm($("param-form"), catalogue, {
-    onChange: (design) => {
-      const warnings = constraintWarnings(design);
-      warningsList.replaceChildren(...warnings.map((w) => el("li", {}, [el("strong", { text: `${w.id} ` }), w.message])));
+    onChange: (design, changedKey) => {
+      redrawBanner();
+      feasibility.schedule(changedKey);
     }
   });
   const getRequest = () => ({ baseline: baselineSelect.value, overrides: form.getOverrides() });
+
+  // Reasons banner (top of the panel) and the slider shading share one data source:
+  // the feasibility slices streamed for the current design.
+  const banner = createFeasibilityBanner($("feasibility-banner"), { onFix: (patch) => form.setValues(patch) });
+  const feasibility = createFeasibility(specs.map((s) => s.key), {
+    getRequest,
+    onSlice: (key, entry) => { form.setFeasibility(key, entry); redrawBanner(); },
+    onDone: redrawBanner,
+    onError: (error) => { console.warn("feasibility stream failed", error); redrawBanner(); }
+  });
+  function redrawBanner() {
+    const design = form.getDesign();
+    banner.render(bannerItems({ design, specs, slices: feasibility.all(), warnings: constraintWarnings(design), sizeError }));
+  }
 
   const result = createResultView($("view-result"));
   createSweepView($("view-sweep"), catalogue, {
@@ -63,10 +81,11 @@ function start(catalogue) {
   createEnsembleView($("view-ensemble"), catalogue, {
     getBaseline: () => baselineSelect.value,
     onPickDesign: (design) => {
+      // Clamp to the slider range (not the study box), so ensemble designs load unchanged.
       const clamped = {};
       for (const [k, v] of Object.entries(design)) {
-        const s = specByKey[k];
-        clamped[k] = Math.min(s.max, Math.max(s.min, s.integer ? Math.round(v) : v));
+        const [lo, hi] = form.range(k);
+        clamped[k] = Math.min(hi, Math.max(lo, specByKey[k].integer ? Math.round(v) : v));
       }
       form.setValues(clamped);
       showView("result");
@@ -79,7 +98,9 @@ function start(catalogue) {
 
   async function loadBaseline() {
     const b = baselines.find((x) => x.name === baselineSelect.value);
-    form.setValues(b.design, { asBaseline: true });
+    feasibility.reset();
+    sizeError = null;
+    form.setValues(b.design, { asBaseline: true }); // onChange -> schedule(null): all 12 slices
     reference = null;
     await sizeCurrent();
   }
@@ -94,9 +115,16 @@ function start(catalogue) {
     try {
       const run = await apiPost(API.evtol.size, body, { signal: controller.signal });
       if (!Object.keys(body.overrides).length) reference = run;
+      sizeError = null;
       result.render(run, reference);
+      redrawBanner();
     } catch (error) {
-      if (error.name !== "AbortError") result.renderError(error);
+      if (error.name === "AbortError") return;
+      result.renderError(error);
+      if (error.detail?.code === "sizing_failed") {
+        sizeError = error.message;
+        redrawBanner();
+      }
     } finally {
       if (inFlight === controller) {
         inFlight = null;

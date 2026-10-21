@@ -127,6 +127,7 @@ body {
 }
 
 .param-row {
+  position: relative;
   margin: 6px 0 10px;
 }
 
@@ -154,15 +155,112 @@ body {
   background: var(--accent);
 }
 
+/* The thumb sits in a segment that does not close: red thumb and red label marker. */
+.param-row.is-infeasible .param-changed {
+  background: var(--danger);
+}
+
 .param-inputs {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+/* Slider track shaded by the feasibility slice: --track is a gradient built by
+   trackLayers() in scripts/feasibilityModel.js (green closes, red fails, amber
+   hatched for a layout constraint). No slice yet: grey, pulsing. Stale: dimmed. */
 .param-slider {
   flex: 1 1 auto;
   min-width: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.param-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track, var(--panel-2));
+}
+
+.param-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track, var(--panel-2));
+}
+
+.param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -4px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--surface);
+  box-sizing: border-box;
+}
+
+.param-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--ink);
+  border: 2px solid var(--surface);
+  box-sizing: border-box;
+}
+
+.param-slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.param-row.is-infeasible .param-slider::-webkit-slider-thumb {
+  background: var(--danger);
+}
+
+.param-row.is-infeasible .param-slider::-moz-range-thumb {
+  background: var(--danger);
+}
+
+.param-row.is-pending .param-slider {
+  animation: feas-pulse 1.4s ease-in-out infinite;
+}
+
+.param-row.is-stale .param-slider {
+  opacity: 0.45;
+}
+
+@keyframes feas-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .param-row.is-pending .param-slider {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.param-tip {
+  position: absolute;
+  top: 100%;
+  z-index: 2;
+  max-width: 260px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--on-ink);
+  background: var(--tooltip-bg);
+  border-radius: var(--radius);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .param-number {
@@ -184,10 +282,6 @@ body {
   margin-top: 2px;
 }
 
-.param-row.is-outside .param-note {
-  color: var(--danger);
-}
-
 .warnings {
   list-style: none;
   margin: 8px 0;
@@ -201,6 +295,59 @@ body {
   border-left: 3px solid var(--danger);
   background: var(--danger-bg);
   border-radius: var(--radius);
+}
+
+/* Reasons banner: under the baseline picker, sticky while the inputs scroll.
+   The text is the primary signal (aria-live); the slider shading repeats it. */
+.feasibility-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 4px 0;
+  max-height: 36vh; /* many causes must not push the sliders out of reach */
+  overflow: auto;
+  background: var(--panel);
+}
+
+.banner-item {
+  margin: 4px 0;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+}
+
+.banner-item.is-constraint {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.banner-item.is-ok {
+  border-left-color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.banner-item.is-pending {
+  border-left-color: var(--faint);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.banner-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-small {
+  font-size: 11.5px;
+  padding: 2px 7px;
+  border-color: var(--line);
 }
 
 .panel-actions {

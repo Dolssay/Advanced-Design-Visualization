@@ -36,6 +36,10 @@ Add a route in both places; `backend/tests/test_route_contract.py` checks they m
 Paths are relative (`/api/...`), so the same build works behind Vite, nginx or a
 Kubernetes Ingress without configuration.
 
+Demo 2 includes a Screening tab with Morris μ*–σ and importance charts. It opens
+with a clearly marked illustrative JSON sample; **Run screening** requests live
+results from `POST /api/v1/evtol/screening`.
+
 Use `BACKEND_URL` to proxy to a backend that isn't on localhost:8000:
 
 ```bash

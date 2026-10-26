@@ -21,6 +21,7 @@ export const API = {
     sweep: "/api/v1/evtol/sweep",
     sensitivity: "/api/v1/evtol/sensitivity",
     ensemble: "/api/v1/evtol/ensemble",
-    feasibility: "/api/v1/evtol/feasibility"
+    feasibility: "/api/v1/evtol/feasibility",
+    screening: "/api/v1/evtol/screening"
   }
 };

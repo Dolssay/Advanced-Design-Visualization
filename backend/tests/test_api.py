@@ -173,3 +173,33 @@ def test_feasibility_errors_before_streaming(client):
     assert bad.status_code == 422 and bad.json()["detail"]["code"] == "invalid_overrides"
     assert client.post("/api/v1/evtol/feasibility", json={"baseline": "nope"}).status_code == 404
     assert client.post("/api/v1/evtol/feasibility", json={"resolution": 1}).status_code == 422
+
+def test_screening_shape_and_cache(client):
+    request = {"baseline": "Archer_Midnight", "r": 4, "seed": 0}
+    response = client.post("/api/v1/evtol/screening", json=request)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["n_runs"] == 52
+    assert body["n_failed"] >= 0
+    assert body["n_constraint"] >= 0
+    assert body["cached"] is False
+    assert len(body["inputs"]) == 12
+    assert set(body["results"]) == {
+        "mtow_kg", "empty_mass_kg", "battery_mass_kg", "total_energy_kw_hr", "cruise_l_p_d"
+    }
+    for output in body["results"].values():
+        assert len(output) == 12
+        assert all(item["mu_star_conf"] is not None for item in output)
+        assert all(isinstance(item["n_failed"], int) for item in output)
+    assert set(body["stability"]) == set(body["results"])
+
+    cached = client.post("/api/v1/evtol/screening", json=request)
+    assert cached.status_code == 200
+    assert cached.json()["cached"] is True
+    assert cached.json()["n_runs"] == 52
+
+
+def test_screening_run_limit(client):
+    response = client.post("/api/v1/evtol/screening", json={"r": 47})
+    assert response.status_code == 422
+    assert response.json()["detail"]["code"] == "too_many_screening_runs"

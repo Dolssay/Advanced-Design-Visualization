@@ -1,0 +1,102 @@
+{
+  "baseline": "Archer_Midnight",
+  "n_runs": 260,
+  "n_failed": 6,
+  "n_constraint": 31,
+  "elapsed_s": 16.4,
+  "r": 20,
+  "seed": 0,
+  "inputs": [
+    {"key":"payload_kg","label":"Payload","unit":"kg","group":"Mission","lo":350,"hi":550},
+    {"key":"cruise_s","label":"Cruise time","unit":"s","group":"Mission","lo":1500,"hi":2100},
+    {"key":"reserve_cruise_s","label":"Reserve cruise time","unit":"s","group":"Mission","lo":100,"hi":300},
+    {"key":"wingspan_m","label":"Wingspan","unit":"m","group":"Geometry","lo":13,"hi":17},
+    {"key":"d_value_m","label":"D-value","unit":"m","group":"Geometry","lo":13,"hi":17},
+    {"key":"fuselage_l_m","label":"Fuselage length","unit":"m","group":"Geometry","lo":7.5,"hi":10},
+    {"key":"fuselage_w_m","label":"Fuselage width","unit":"m","group":"Geometry","lo":1.4,"hi":1.8},
+    {"key":"horiz_tail_vol_coeff","label":"Horizontal tail volume coeff.","unit":"","group":"Geometry","lo":0.6,"hi":0.8},
+    {"key":"vert_tail_vol_coeff","label":"Vertical tail volume coeff.","unit":"","group":"Geometry","lo":0.04,"hi":0.06},
+    {"key":"lift_rotor_count","label":"Rotors per type","unit":"count","group":"Propulsion","lo":5,"hi":7},
+    {"key":"rotor_diameter_m","label":"Rotor diameter","unit":"m","group":"Propulsion","lo":1.8,"hi":2.3},
+    {"key":"batt_spec_energy_w_h_p_kg","label":"Battery specific energy","unit":"Wh/kg","group":"Battery","lo":240,"hi":300}
+  ],
+  "results": {
+    "mtow_kg": [
+      {"param":"payload_kg","mu":198.0,"mu_star":198.0,"mu_star_conf":13.0,"sigma":4.0,"n_effects":20,"n_failed":0},
+      {"param":"cruise_s","mu":-167.0,"mu_star":167.0,"mu_star_conf":18.0,"sigma":29.0,"n_effects":19,"n_failed":1},
+      {"param":"reserve_cruise_s","mu":41.0,"mu_star":43.0,"mu_star_conf":8.0,"sigma":12.0,"n_effects":20,"n_failed":0},
+      {"param":"wingspan_m","mu":34.0,"mu_star":39.0,"mu_star_conf":12.0,"sigma":22.0,"n_effects":19,"n_failed":1},
+      {"param":"d_value_m","mu":10.0,"mu_star":18.0,"mu_star_conf":6.0,"sigma":17.0,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_l_m","mu":5.0,"mu_star":11.0,"mu_star_conf":4.0,"sigma":10.0,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_w_m","mu":2.0,"mu_star":6.0,"mu_star_conf":3.0,"sigma":6.0,"n_effects":20,"n_failed":0},
+      {"param":"horiz_tail_vol_coeff","mu":-4.0,"mu_star":8.0,"mu_star_conf":4.0,"sigma":8.0,"n_effects":20,"n_failed":0},
+      {"param":"vert_tail_vol_coeff","mu":1.0,"mu_star":4.0,"mu_star_conf":2.0,"sigma":3.0,"n_effects":20,"n_failed":0},
+      {"param":"lift_rotor_count","mu":-25.0,"mu_star":32.0,"mu_star_conf":11.0,"sigma":26.0,"n_effects":20,"n_failed":0},
+      {"param":"rotor_diameter_m","mu":-8.0,"mu_star":28.0,"mu_star_conf":10.0,"sigma":31.0,"n_effects":20,"n_failed":0},
+      {"param":"batt_spec_energy_w_h_p_kg","mu":-205.0,"mu_star":210.4,"mu_star_conf":22.7,"sigma":61.9,"n_effects":20,"n_failed":0}
+    ],
+    "empty_mass_kg": [
+      {"param":"payload_kg","mu":35,"mu_star":40,"mu_star_conf":8,"sigma":15,"n_effects":20,"n_failed":0},
+      {"param":"cruise_s","mu":-79,"mu_star":83,"mu_star_conf":12,"sigma":26,"n_effects":19,"n_failed":1},
+      {"param":"reserve_cruise_s","mu":24,"mu_star":28,"mu_star_conf":7,"sigma":14,"n_effects":20,"n_failed":0},
+      {"param":"wingspan_m","mu":42,"mu_star":46,"mu_star_conf":11,"sigma":25,"n_effects":19,"n_failed":1},
+      {"param":"d_value_m","mu":9,"mu_star":16,"mu_star_conf":6,"sigma":14,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_l_m","mu":19,"mu_star":22,"mu_star_conf":6,"sigma":11,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_w_m","mu":8,"mu_star":10,"mu_star_conf":4,"sigma":6,"n_effects":20,"n_failed":0},
+      {"param":"horiz_tail_vol_coeff","mu":-7,"mu_star":12,"mu_star_conf":5,"sigma":12,"n_effects":20,"n_failed":0},
+      {"param":"vert_tail_vol_coeff","mu":3,"mu_star":6,"mu_star_conf":3,"sigma":5,"n_effects":20,"n_failed":0},
+      {"param":"lift_rotor_count","mu":-18,"mu_star":27,"mu_star_conf":10,"sigma":24,"n_effects":20,"n_failed":0},
+      {"param":"rotor_diameter_m","mu":-11,"mu_star":29,"mu_star_conf":11,"sigma":33,"n_effects":20,"n_failed":0},
+      {"param":"batt_spec_energy_w_h_p_kg","mu":-12,"mu_star":24,"mu_star_conf":9,"sigma":30,"n_effects":20,"n_failed":0}
+    ],
+    "battery_mass_kg": [
+      {"param":"payload_kg","mu":71,"mu_star":75,"mu_star_conf":12,"sigma":20,"n_effects":20,"n_failed":0},
+      {"param":"cruise_s","mu":-144,"mu_star":151,"mu_star_conf":17,"sigma":39,"n_effects":19,"n_failed":1},
+      {"param":"reserve_cruise_s","mu":30,"mu_star":36,"mu_star_conf":8,"sigma":17,"n_effects":20,"n_failed":0},
+      {"param":"wingspan_m","mu":13,"mu_star":21,"mu_star_conf":7,"sigma":17,"n_effects":19,"n_failed":1},
+      {"param":"d_value_m","mu":3,"mu_star":9,"mu_star_conf":4,"sigma":9,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_l_m","mu":4,"mu_star":10,"mu_star_conf":4,"sigma":8,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_w_m","mu":2,"mu_star":5,"mu_star_conf":3,"sigma":5,"n_effects":20,"n_failed":0},
+      {"param":"horiz_tail_vol_coeff","mu":-3,"mu_star":6,"mu_star_conf":3,"sigma":6,"n_effects":20,"n_failed":0},
+      {"param":"vert_tail_vol_coeff","mu":1,"mu_star":3,"mu_star_conf":2,"sigma":3,"n_effects":20,"n_failed":0},
+      {"param":"lift_rotor_count","mu":-16,"mu_star":24,"mu_star_conf":9,"sigma":23,"n_effects":20,"n_failed":0},
+      {"param":"rotor_diameter_m","mu":-6,"mu_star":20,"mu_star_conf":8,"sigma":24,"n_effects":20,"n_failed":0},
+      {"param":"batt_spec_energy_w_h_p_kg","mu":-202,"mu_star":207,"mu_star_conf":22,"sigma":60,"n_effects":20,"n_failed":0}
+    ],
+    "total_energy_kw_hr": [
+      {"param":"payload_kg","mu":78,"mu_star":82,"mu_star_conf":13,"sigma":23,"n_effects":20,"n_failed":0},
+      {"param":"cruise_s","mu":193,"mu_star":198,"mu_star_conf":22,"sigma":54,"n_effects":19,"n_failed":1},
+      {"param":"reserve_cruise_s","mu":22,"mu_star":29,"mu_star_conf":8,"sigma":20,"n_effects":20,"n_failed":0},
+      {"param":"wingspan_m","mu":-8,"mu_star":18,"mu_star_conf":7,"sigma":18,"n_effects":19,"n_failed":1},
+      {"param":"d_value_m","mu":1,"mu_star":9,"mu_star_conf":4,"sigma":9,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_l_m","mu":-4,"mu_star":11,"mu_star_conf":5,"sigma":12,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_w_m","mu":3,"mu_star":7,"mu_star_conf":3,"sigma":7,"n_effects":20,"n_failed":0},
+      {"param":"horiz_tail_vol_coeff","mu":-6,"mu_star":10,"mu_star_conf":4,"sigma":10,"n_effects":20,"n_failed":0},
+      {"param":"vert_tail_vol_coeff","mu":2,"mu_star":5,"mu_star_conf":2,"sigma":4,"n_effects":20,"n_failed":0},
+      {"param":"lift_rotor_count","mu":-34,"mu_star":43,"mu_star_conf":13,"sigma":32,"n_effects":20,"n_failed":0},
+      {"param":"rotor_diameter_m","mu":-12,"mu_star":36,"mu_star_conf":12,"sigma":39,"n_effects":20,"n_failed":0},
+      {"param":"batt_spec_energy_w_h_p_kg","mu":-159,"mu_star":165,"mu_star_conf":19,"sigma":53,"n_effects":20,"n_failed":0}
+    ],
+    "cruise_l_p_d": [
+      {"param":"payload_kg","mu":-1.1,"mu_star":1.4,"mu_star_conf":0.5,"sigma":1.0,"n_effects":20,"n_failed":0},
+      {"param":"cruise_s","mu":0.7,"mu_star":1.1,"mu_star_conf":0.4,"sigma":0.9,"n_effects":19,"n_failed":1},
+      {"param":"reserve_cruise_s","mu":0.1,"mu_star":0.4,"mu_star_conf":0.2,"sigma":0.4,"n_effects":20,"n_failed":0},
+      {"param":"wingspan_m","mu":1.7,"mu_star":2.0,"mu_star_conf":0.5,"sigma":1.1,"n_effects":19,"n_failed":1},
+      {"param":"d_value_m","mu":0.2,"mu_star":0.7,"mu_star_conf":0.3,"sigma":0.7,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_l_m","mu":-0.4,"mu_star":0.8,"mu_star_conf":0.3,"sigma":0.7,"n_effects":20,"n_failed":0},
+      {"param":"fuselage_w_m","mu":0.2,"mu_star":0.5,"mu_star_conf":0.2,"sigma":0.5,"n_effects":20,"n_failed":0},
+      {"param":"horiz_tail_vol_coeff","mu":-0.6,"mu_star":0.9,"mu_star_conf":0.3,"sigma":0.8,"n_effects":20,"n_failed":0},
+      {"param":"vert_tail_vol_coeff","mu":0.3,"mu_star":0.6,"mu_star_conf":0.2,"sigma":0.5,"n_effects":20,"n_failed":0},
+      {"param":"lift_rotor_count","mu":-1.5,"mu_star":1.9,"mu_star_conf":0.5,"sigma":1.2,"n_effects":20,"n_failed":0},
+      {"param":"rotor_diameter_m","mu":1.0,"mu_star":1.8,"mu_star_conf":0.6,"sigma":1.5,"n_effects":20,"n_failed":0},
+      {"param":"batt_spec_energy_w_h_p_kg","mu":0.3,"mu_star":0.8,"mu_star_conf":0.4,"sigma":1.0,"n_effects":20,"n_failed":0}
+    ]
+  },
+  "stability": {
+    "mtow_kg":{"top5":["batt_spec_energy_w_h_p_kg","cruise_s","payload_kg","lift_rotor_count","rotor_diameter_m"],"agreement":0.91},
+    "empty_mass_kg":{"top5":["cruise_s","wingspan_m","batt_spec_energy_w_h_p_kg","payload_kg","lift_rotor_count"],"agreement":0.86},
+    "battery_mass_kg":{"top5":["batt_spec_energy_w_h_p_kg","cruise_s","payload_kg","lift_rotor_count","rotor_diameter_m"],"agreement":0.9},
+    "total_energy_kw_hr":{"top5":["cruise_s","batt_spec_energy_w_h_p_kg","payload_kg","lift_rotor_count","rotor_diameter_m"],"agreement":0.88},
+    "cruise_l_p_d":{"top5":["wingspan_m","lift_rotor_count","rotor_diameter_m","payload_kg","cruise_s"],"agreement":0.74}
+  }
+}

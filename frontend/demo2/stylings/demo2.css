@@ -911,6 +911,147 @@ body {
   gap: 12px;
 }
 
+.screening-controls {
+  align-items: flex-end;
+}
+
+.screening-estimate {
+  display: inline-block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.screening-message {
+  margin-top: 10px;
+}
+
+.screening-sample-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+.screening-output-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.screening-output {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.screening-output[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-ink);
+}
+
+.screening-output:focus-visible,
+.tab:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.screening-meta {
+  margin: 10px 0 4px;
+}
+
+.screening-warning {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.screening-warning[hidden] {
+  display: none;
+}
+
+.screening-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.screening-chart-panel {
+  min-width: 0;
+}
+
+.screening-chart-title {
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+
+.screening-chart {
+  min-width: 0;
+}
+
+.screening-ray-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 2px 8px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.screening-ray-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.screening-ray-swatch {
+  width: 18px;
+  border-top: 1px dashed var(--muted);
+}
+
+.screening-reading-guide {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+
+.screening-reading-guide h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.screening-reading-guide p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .control-action {
   display: flex;
   align-items: center;
@@ -952,5 +1093,9 @@ body {
   .d2-panel {
     position: static;
     max-height: none;
+  }
+
+  .screening-charts {
+    grid-template-columns: 1fr;
   }
 }

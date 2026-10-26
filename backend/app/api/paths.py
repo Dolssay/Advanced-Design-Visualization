@@ -29,6 +29,7 @@ EVTOL_SWEEP = f"{EVTOL}/sweep"
 EVTOL_SENSITIVITY = f"{EVTOL}/sensitivity"
 EVTOL_ENSEMBLE = f"{EVTOL}/ensemble"
 EVTOL_FEASIBILITY = f"{EVTOL}/feasibility"
+EVTOL_SCREENING = f"{EVTOL}/screening"
 
 
 def run_image_url(run_id: str, kind: str) -> str:

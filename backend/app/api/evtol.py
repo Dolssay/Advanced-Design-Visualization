@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 import logging
 import math
@@ -14,7 +15,8 @@ from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import FileResponse, StreamingResponse
 
 from app.api import paths
-from app.api.schemas import EnsembleRequest, FeasibilityRequest, SensitivityRequest, SizeRequest, SweepRequest
+from app.api.schemas import EnsembleRequest, FeasibilityRequest, ScreeningRequest, SensitivityRequest, SizeRequest, SweepRequest
+from app.config import MAX_SCREENING_RUNS
 from app.services.evtol_model import (
     IMAGE_KINDS,
     SUMMARY_OUTPUTS,
@@ -31,6 +33,7 @@ from app.services.evtol_model import (
 from app.services.ensemble import build_payload, sample_inputs
 from app.services.feasibility import SliceJob, allowed_range, grid_values, run_slices, slice_id
 from app.services.runner import SizingTimeout
+from app.services.screening import analyze_screening, build_screening_design
 from app.services.store import run_id_for
 
 log = logging.getLogger("adv_viz")
@@ -103,7 +106,8 @@ def get_parameters(request: Request) -> dict:
         "outputs": SUMMARY_OUTPUTS,
         "images": IMAGE_KINDS,
         "limits": {"max_sweep_points": settings.max_sweep_points,
-                   "max_ensemble_samples": settings.max_ensemble_samples},
+                   "max_ensemble_samples": settings.max_ensemble_samples,
+                   "max_screening_runs": MAX_SCREENING_RUNS},
     }
 
 
@@ -349,3 +353,62 @@ async def feasibility(body: FeasibilityRequest, request: Request) -> StreamingRe
                       "elapsed_s": round(time.perf_counter() - started, 2), "cached": len(cached)})
 
     return StreamingResponse(stream(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
+
+@router.post(paths.EVTOL_SCREENING)
+async def screening(body: ScreeningRequest, request: Request) -> dict:
+    state = request.app.state
+    base = _baseline(request, body.baseline)
+    unknown_outputs = sorted(set(body.outputs) - set(SUMMARY_OUTPUTS))
+    if unknown_outputs or not body.outputs or len(set(body.outputs)) != len(body.outputs):
+        reason = (
+            f"Unknown outputs: {unknown_outputs}."
+            if unknown_outputs
+            else "Outputs must be a non-empty list without duplicates."
+        )
+        raise HTTPException(422, {
+            "code": "invalid_screening_outputs",
+            "message": reason,
+        })
+
+    factor_count = sum(1 for spec in state.catalogue["parameters"] if spec["key"] != "tilt_rotor_count")
+    n_runs = body.r * (factor_count + 1)
+    if n_runs > MAX_SCREENING_RUNS:
+        raise HTTPException(422, {
+            "code": "too_many_screening_runs",
+            "message": f"{n_runs} runs requested; the limit is {MAX_SCREENING_RUNS}.",
+        })
+
+    try:
+        design = build_screening_design(
+            state.catalogue, body.r, body.levels, body.seed, body.bounds
+        )
+    except ValueError as exc:
+        raise HTTPException(422, {"code": "invalid_screening_request", "message": str(exc)}) from exc
+
+    canonical = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    cache_key = hashlib.sha256(canonical.encode()).hexdigest()
+    cached = state.runs.load_screening(cache_key)
+    if cached is not None:
+        return {**cached, "cached": True}
+
+    started = time.perf_counter()
+    configs = [
+        _apply(request, base, point, enforce_bounds=False)
+        for point in design.overrides
+    ]
+    summaries = await _map(request, size_summary, configs)
+    n_constraint = sum(bool(check_constraints(config)) for config in configs)
+    payload = analyze_screening(
+        design,
+        summaries,
+        body.outputs,
+        body.r,
+        body.seed,
+        n_constraint=n_constraint,
+        elapsed_s=time.perf_counter() - started,
+    )
+    payload["baseline"] = body.baseline
+    payload["cached"] = False
+    payload["elapsed_s"] = round(time.perf_counter() - started, 3)
+    state.runs.save_screening(cache_key, payload)
+    return payload

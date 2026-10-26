@@ -15,6 +15,7 @@ from pathlib import Path
 from app import __version__
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+MAX_SCREENING_RUNS = 600
 
 
 def _int(name: str, default: int) -> int:

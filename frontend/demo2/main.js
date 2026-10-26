@@ -11,6 +11,7 @@ import { el } from "./scripts/format.js";
 import { createResultView } from "./scripts/resultView.js";
 import { createSweepView } from "./scripts/sweepView.js";
 import { createSensitivityView } from "./scripts/sensitivityView.js";
+import { createScreeningView } from "./scripts/screeningView.js";
 import { createEnsembleView } from "./scripts/ensembleView.js";
 
 const $ = (id) => document.getElementById(id);
@@ -149,6 +150,9 @@ function start(catalogue) {
     onPick: (key, value) => { form.setValues({ [key]: value }); showView("result"); sizeCurrent(); }
   });
   createSensitivityView($("view-sensitivity"), catalogue, { getRequest });
+  createScreeningView($("view-screening"), catalogue, {
+    getBaseline: () => baselineSelect.value
+  });
   createEnsembleView($("view-ensemble"), catalogue, {
     getBaseline: () => baselineSelect.value,
     onPickDesign: (design) => {

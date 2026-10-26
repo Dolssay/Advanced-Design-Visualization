@@ -44,3 +44,22 @@ class EnsembleRequest(BaseModel):
     baseline: str = "Archer_Midnight"
     n_samples: int = Field(50, ge=1)
     seed: int = 0
+
+
+class ScreeningRequest(BaseModel):
+    baseline: str = "Archer_Midnight"
+    r: int = Field(20, ge=1, description="Number of Morris trajectories")
+    levels: int = Field(4, ge=2, description="Number of grid levels (must be even)")
+    seed: int = Field(0, description="Deterministic sampler and bootstrap seed")
+    bounds: dict[str, list[float]] | None = Field(
+        None, description="Optional parameter bounds as {parameter: [low, high]}"
+    )
+    outputs: list[str] = Field(
+        default_factory=lambda: [
+            "mtow_kg",
+            "empty_mass_kg",
+            "battery_mass_kg",
+            "total_energy_kw_hr",
+            "cruise_l_p_d",
+        ]
+    )

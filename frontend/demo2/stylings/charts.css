@@ -120,6 +120,70 @@
   cursor: pointer;
 }
 
+.viz .screening-ray {
+  stroke: var(--muted);
+  stroke-width: 1;
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.viz .screening-freeze-zone {
+  fill: var(--panel-2);
+  fill-opacity: 0.7;
+  stroke: var(--line);
+  stroke-dasharray: 3 3;
+  pointer-events: none;
+}
+
+.viz .screening-freeze-label {
+  fill: var(--muted);
+  font-size: 10px;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.viz .screening-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+  cursor: pointer;
+}
+
+.viz .screening-dot:hover,
+.viz .screening-dot:focus {
+  stroke: var(--ink);
+  stroke-width: 3;
+  outline: none;
+}
+
+.viz .screening-point-label {
+  fill: var(--ink);
+  font-size: 10.5px;
+  pointer-events: none;
+}
+
+.viz .screening-bar {
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.viz .screening-ci,
+.viz .screening-ci-cap {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+  pointer-events: none;
+}
+
+.viz .screening-failed-note {
+  fill: var(--danger);
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.viz .screening-bar-label {
+  font-size: 11px;
+}
+
 .viz-tooltip {
   position: absolute;
   z-index: 5;

@@ -20,6 +20,7 @@ Shape: `/api/<version>/<domain>/<resource>[/<id>[/<sub-resource>]]`
 | POST | `/api/v1/evtol/sensitivity` | `{baseline, overrides, delta_pct=10, parameters?}` | `{base, rows:[{key,low_value,high_value,low,high}]}` |
 | POST | `/api/v1/evtol/ensemble` | `{baseline, n_samples=50, seed=0}` | `{status_counts, rows:[{run, inputs..., outputs...}]}` |
 | POST | `/api/v1/evtol/feasibility` | `{baseline, overrides, parameters?, priority=[], resolution=13, refine=3}` | NDJSON stream: one `{param, limit, current, constraint, segments, feasible, points}` line per parameter, then `{done, n_runs, elapsed_s, cached}` |
+| POST | `/api/v1/evtol/screening` | `{baseline, r=20, levels=4, seed=0, bounds?, outputs?}` | Morris effects (`mu`, `mu_star`, confidence interval, `sigma`) and bootstrap top-5 stability |
 
 ## Example
 
@@ -77,3 +78,12 @@ Errors are `{"detail": {"code": ..., "message": ...}}`.
 
 `warnings` in a `/size` response lists layout constraints (C1–C6) the design breaks.
 They don't block sizing, because some reference aircraft sit outside them.
+
+`/evtol/screening` uses Morris trajectories across all independent catalogue
+inputs (the lift and tilt rotor counts move together). It runs `r × (k + 1)`
+designs, up to 600, without repairing constraint violations. `bounds` optionally
+overrides the study-box range for selected inputs. Effects are expressed per
+full input range; failed solver points only remove adjacent effects. The result
+includes `n_constraint` (sampled designs violating at least one constraint),
+per-effect failure counts, and per-output top-5 ranking agreement from trajectory
+bootstrap resampling. Identical requests are cached.

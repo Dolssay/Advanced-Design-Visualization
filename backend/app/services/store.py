@@ -14,6 +14,7 @@ from typing import Any
 
 REQUIRED_SECTIONS = ("aircraft", "environ", "mission", "power", "propulsion")
 RUN_ID = re.compile(r"^[0-9a-f]{16}$")
+SCREENING_CACHE_KEY = re.compile(r"^[0-9a-f]{64}$")
 
 
 class BaselineStore:
@@ -75,6 +76,26 @@ class RunStore:
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(payload, fh)
         tmp.replace(directory / "result.json")
+
+    def load_screening(self, cache_key: str) -> dict[str, Any] | None:
+        if not SCREENING_CACHE_KEY.fullmatch(cache_key):
+            raise ValueError("Screening cache keys must be full SHA-256 hex digests.")
+        path = self.directory / "screening-cache" / f"{cache_key}.json"
+        if not path.exists():
+            return None
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+
+    def save_screening(self, cache_key: str, payload: dict[str, Any]) -> None:
+        if not SCREENING_CACHE_KEY.fullmatch(cache_key):
+            raise ValueError("Screening cache keys must be full SHA-256 hex digests.")
+        directory = self.directory / "screening-cache"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{cache_key}.json"
+        tmp = directory / f"{cache_key}.json.tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+        tmp.replace(path)
 
     def image_path(self, run_id: str, kind: str) -> Path | None:
         try:

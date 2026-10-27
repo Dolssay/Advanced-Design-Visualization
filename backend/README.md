@@ -81,3 +81,12 @@ machine. `deploy/docker-compose.yml` mounts `output/prebuilt` read-only at `/srv
 
 `pipelines/ensemble.py` keeps the GLEE CSV columns and image names. The column
 "Cruise Speed (m/s)" is a historical header: the value is the cruise time in seconds.
+
+## Production / Kubernetes Deployment (Prebuilt Ensembles)
+
+On Kubernetes / Rancher, ready-made ensembles are mounted read-only at `/srv/prebuilt` via a PersistentVolumeClaim (`prebuilt` in `deploy/k8s/base/prebuilt-pvc.yaml`).
+The PVC is populated once by a Kubernetes Job (`deploy/k8s/base/precompute-job.yaml`) running:
+```bash
+python -m pipelines.precompute_ensemble --out /srv/prebuilt
+```
+The backend container reads `PREBUILT_DIR=/srv/prebuilt` at startup, allowing instant loading of ensembles with zero runtime sizing delay.

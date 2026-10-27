@@ -44,6 +44,8 @@ class EnsembleRequest(BaseModel):
     baseline: str = "Archer_Midnight"
     n_samples: int = Field(50, ge=1)
     seed: int = 0
+    bounds: dict[str, list[float]] | None = None
+    append_to: str | None = None
 
 
 class ScreeningRequest(BaseModel):

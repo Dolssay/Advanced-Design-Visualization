@@ -467,3 +467,18 @@ SUMMARY_OUTPUTS = {
 def size_summary(config: dict[str, Any], max_iter: int = 150) -> dict[str, Any]:
     """Worker entry point for batch calls: size without images, return scalars."""
     return summary(size_design(config, max_iter=max_iter))
+
+
+def status_class(status: str | None) -> str:
+    """Map solver/eval status to standard vocabulary: converged, max_iter, diverged, error, constraint."""
+    if not status:
+        return "error"
+    if status in ("converged", "max_iter", "diverged", "error", "constraint"):
+        return status
+    if status == "Success":
+        return "converged"
+    if status == "NotConverged":
+        return "max_iter"
+    if status == "ValueError":
+        return "diverged"
+    return "error"

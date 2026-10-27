@@ -6,6 +6,7 @@ Run locally from backend/:
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 import uuid
@@ -56,6 +57,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         state.baselines.load()
         state.runs = RunStore(settings.runs_dir)
         state.runs.prepare()
+        state.prebuilt_index = []
+        if settings.prebuilt_dir and settings.prebuilt_dir.exists():
+            for idx_path in (settings.prebuilt_dir / "ensembles" / "index.json", settings.prebuilt_dir / "index.json"):
+                if idx_path.exists():
+                    try:
+                        state.prebuilt_index = json.loads(idx_path.read_text(encoding="utf-8"))
+                        log.info("loaded %d prebuilt ensemble(s) from %s", len(state.prebuilt_index), idx_path)
+                    except Exception as e:
+                        log.warning("failed to parse %s: %s", idx_path, e)
+                    break
         state.slices = RunStore(settings.runs_dir / "feasibility")  # one cached line per feasibility slice
         state.slices.prepare()
         state.runner = SizingRunner(settings.sizing_workers, settings.sizing_timeout_s)

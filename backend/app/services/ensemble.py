@@ -10,7 +10,7 @@ import hashlib
 import json
 from typing import Any
 
-from app.services.evtol_model import SUMMARY_OUTPUTS, catalogue_index
+from app.services.evtol_model import SUMMARY_OUTPUTS, catalogue_index, status_class
 
 
 def ensemble_id(baseline: str, n_samples: int, seed: int, bounds: dict[str, list[float]] | None) -> str:
@@ -45,10 +45,12 @@ def sample_inputs(catalogue: dict[str, Any], n_samples: int, seed: int,
 def build_payload(baseline: str, seed: int, bounds: dict[str, list[float]] | None, catalogue: dict[str, Any],
                   inputs: list[dict[str, float]], summaries: list[dict[str, Any]]) -> dict[str, Any]:
     index = catalogue_index(catalogue)
-    rows = [{"run": i + 1, **inp, **s} for i, (inp, s) in enumerate(zip(inputs, summaries))]
+    rows = []
     counts: dict[str, int] = {}
-    for s in summaries:
-        counts[s["status"]] = counts.get(s["status"], 0) + 1
+    for i, (inp, s) in enumerate(zip(inputs, summaries)):
+        st = status_class(s.get("status"))
+        counts[st] = counts.get(st, 0) + 1
+        rows.append({"run": i + 1, "batch": 0, **inp, **s, "status": st})
     return {
         "ensemble_id": ensemble_id(baseline, len(inputs), seed, bounds),
         "baseline": baseline,
@@ -59,3 +61,16 @@ def build_payload(baseline: str, seed: int, bounds: dict[str, list[float]] | Non
         "status_counts": counts,
         "rows": rows,
     }
+
+
+def normalize_collection(collection: dict[str, Any]) -> dict[str, Any]:
+    """Ensure rows have standard status and batch, and status_counts is normalized."""
+    counts: dict[str, int] = {}
+    for r in collection.get("rows", []):
+        if "batch" not in r:
+            r["batch"] = 0
+        r["status"] = status_class(r.get("status"))
+        st = r["status"]
+        counts[st] = counts.get(st, 0) + 1
+    collection["status_counts"] = counts
+    return collection

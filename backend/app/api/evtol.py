@@ -8,7 +8,9 @@ import json
 import logging
 import math
 import time
+from datetime import datetime, timezone
 from functools import partial
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
@@ -29,8 +31,9 @@ from app.services.evtol_model import (
     effective_range,
     size_design,
     size_summary,
+    status_class,
 )
-from app.services.ensemble import build_payload, sample_inputs
+from app.services.ensemble import build_payload, ensemble_id, normalize_collection, sample_inputs
 from app.services.feasibility import SliceJob, allowed_range, grid_values, run_slices, slice_id
 from app.services.runner import SizingTimeout
 from app.services.screening import analyze_screening, build_screening_design
@@ -260,17 +263,187 @@ async def sensitivity(body: SensitivityRequest, request: Request) -> dict:
     }
 
 
+def validate_bounds(bounds: dict[str, list[float]] | None, catalogue: dict[str, Any]) -> None:
+    if not bounds:
+        return
+    index = catalogue_index(catalogue)
+    for key, span in bounds.items():
+        if key not in index:
+            raise HTTPException(422, {"code": "invalid_bounds", "message": f"Unknown parameter '{key}' in bounds."})
+        if not isinstance(span, (list, tuple)) or len(span) != 2:
+            raise HTTPException(422, {"code": "invalid_bounds", "message": f"Bounds for '{key}' must be [lo, hi]."})
+        lo, hi = span
+        spec = index[key]
+        limit_min = spec.get("limit_min", spec.get("min"))
+        limit_max = spec.get("limit_max", spec.get("max"))
+        if min(lo, hi) < limit_min or max(lo, hi) > limit_max:
+            raise HTTPException(
+                422,
+                {
+                    "code": "bounds_out_of_range",
+                    "message": f"Bounds for '{key}' [{lo}, {hi}] must lie inside slider limits [{limit_min}, {limit_max}].",
+                },
+            )
+
+
+def _find_ensemble_file(state, ensemble_id_val: str) -> Path | None:
+    runs_file = state.settings.runs_dir / "ensembles" / f"{ensemble_id_val}.json"
+    if runs_file.exists():
+        return runs_file
+    if state.settings.prebuilt_dir and state.settings.prebuilt_dir.exists():
+        candidates = [
+            state.settings.prebuilt_dir / "ensembles" / f"{ensemble_id_val}.json",
+            state.settings.prebuilt_dir / f"{ensemble_id_val}.json",
+        ]
+        for c in candidates:
+            if c.exists():
+                return c
+    return None
+
+
+def _update_ensemble_index(directory: Path, payload: dict) -> None:
+    path = directory / "index.json"
+    entries = json.loads(path.read_text(encoding="utf-8")) if path.exists() else []
+    entries = [e for e in entries if e.get("ensemble_id") != payload["ensemble_id"]]
+    entries.append({
+        "ensemble_id": payload["ensemble_id"],
+        "baseline": payload["baseline"],
+        "seed": payload["seed"],
+        "bounds": payload.get("bounds"),
+        "status_counts": payload.get("status_counts", {}),
+        "n_samples": payload.get("n_samples", len(payload.get("rows", []))),
+        "created": payload.get("created", datetime.now(timezone.utc).isoformat(timespec="seconds")),
+        "elapsed_s": payload.get("elapsed_s", 0.0),
+    })
+    tmp = path.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(sorted(entries, key=lambda e: e.get("created", "")), fh, separators=(",", ":"))
+    tmp.replace(path)
+
+
+def _save_ensemble(runs_dir: Path, payload: dict) -> None:
+    directory = runs_dir / "ensembles"
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{payload['ensemble_id']}.json"
+    tmp = path.with_suffix(".json.tmp")
+    with open(tmp, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, separators=(",", ":"))
+    tmp.replace(path)
+    _update_ensemble_index(directory, payload)
+
+
 @router.post(paths.EVTOL_ENSEMBLE)
 async def ensemble(body: EnsembleRequest, request: Request) -> dict:
-    """Latin Hypercube ensemble, the interactive version of pipelines/precompute_ensemble.py."""
+    """Latin Hypercube ensemble, with bounds, caching and append_to support."""
     state = request.app.state
+    validate_bounds(body.bounds, state.catalogue)
+
+    if body.append_to:
+        if body.n_samples > state.settings.max_ensemble_samples:
+            raise HTTPException(422, {"code": "too_many_samples",
+                                      "message": f"Limit is {state.settings.max_ensemble_samples} samples."})
+        existing_path = _find_ensemble_file(state, body.append_to)
+        if existing_path is None:
+            raise HTTPException(404, {"code": "unknown_ensemble",
+                                      "message": f"No ensemble with id '{body.append_to}'."})
+        collection = normalize_collection(json.loads(existing_path.read_text(encoding="utf-8")))
+        existing_rows = collection.get("rows", [])
+        current_count = len(existing_rows)
+        max_batch = max((r.get("batch", 0) for r in existing_rows), default=0)
+        new_batch = max_batch + 1
+        append_seed = int(hashlib.sha256(f"{body.append_to}:{current_count}".encode()).hexdigest()[:8], 16)
+        effective_bounds = body.bounds if body.bounds is not None else collection.get("bounds")
+        base = _baseline(request, collection.get("baseline", body.baseline))
+        new_inputs = sample_inputs(state.catalogue, body.n_samples, append_seed, effective_bounds)
+        configs = [_apply(request, base, overrides, enforce_bounds=False) for overrides in new_inputs]
+        new_summaries = await _map(request, size_summary, configs)
+
+        new_rows = []
+        for idx, (inp, s) in enumerate(zip(new_inputs, new_summaries)):
+            st = status_class(s.get("status"))
+            new_rows.append({
+                "run": current_count + 1 + idx,
+                "batch": new_batch,
+                **inp,
+                **s,
+                "status": st,
+            })
+        merged_rows = existing_rows + new_rows
+        counts: dict[str, int] = {}
+        for r in merged_rows:
+            st = r["status"]
+            counts[st] = counts.get(st, 0) + 1
+        collection["rows"] = merged_rows
+        collection["status_counts"] = counts
+        collection["n_samples"] = len(merged_rows)
+        _save_ensemble(state.settings.runs_dir, collection)
+
+        return {
+            "ensemble_id": body.append_to,
+            "rows": new_rows,
+            "n_total": len(merged_rows),
+            "batch": new_batch,
+            "status_counts": counts,
+        }
+
+    # Standard / cached ensemble
+    eid = ensemble_id(body.baseline, body.n_samples, body.seed, body.bounds)
+    cached_path = _find_ensemble_file(state, eid)
+    if cached_path is not None:
+        collection = json.loads(cached_path.read_text(encoding="utf-8"))
+        return normalize_collection(collection)
+
     if body.n_samples > state.settings.max_ensemble_samples:
         raise HTTPException(422, {"code": "too_many_samples",
                                   "message": f"Limit is {state.settings.max_ensemble_samples} samples."})
+
     base = _baseline(request, body.baseline)
-    inputs = sample_inputs(state.catalogue, body.n_samples, body.seed)
+    inputs = sample_inputs(state.catalogue, body.n_samples, body.seed, body.bounds)
     configs = [_apply(request, base, overrides, enforce_bounds=False) for overrides in inputs]
     summaries = await _map(request, size_summary, configs)
+    payload = build_payload(body.baseline, body.seed, body.bounds, state.catalogue, inputs, summaries)
+    payload["n_samples"] = len(inputs)
+    payload["created"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    _save_ensemble(state.settings.runs_dir, payload)
+    return payload
+
+
+@router.get(paths.EVTOL_ENSEMBLES)
+def list_ensembles(request: Request) -> list[dict]:
+    state = request.app.state
+    merged: dict[str, dict] = {}
+    prebuilt = getattr(state, "prebuilt_index", None)
+    if prebuilt is None and state.settings.prebuilt_dir and state.settings.prebuilt_dir.exists():
+        for p in (state.settings.prebuilt_dir / "ensembles" / "index.json", state.settings.prebuilt_dir / "index.json"):
+            if p.exists():
+                try:
+                    prebuilt = json.loads(p.read_text(encoding="utf-8"))
+                except Exception:
+                    pass
+                break
+    for e in (prebuilt or []):
+        merged[e["ensemble_id"]] = e
+    runs_index_path = state.settings.runs_dir / "ensembles" / "index.json"
+    if runs_index_path.exists():
+        try:
+            runs_entries = json.loads(runs_index_path.read_text(encoding="utf-8"))
+            for e in runs_entries:
+                merged[e["ensemble_id"]] = e
+        except Exception:
+            pass
+    return list(merged.values())
+
+
+@router.get(paths.EVTOL_COLLECTION)
+def get_ensemble(id: str, request: Request) -> dict:
+    state = request.app.state
+    path = _find_ensemble_file(state, id)
+    if path is None:
+        raise HTTPException(404, {"code": "unknown_ensemble", "message": f"No ensemble with id '{id}'."})
+    collection = json.loads(path.read_text(encoding="utf-8"))
+    return normalize_collection(collection)
+
+
     return build_payload(body.baseline, body.seed, None, state.catalogue, inputs, summaries)
 
 

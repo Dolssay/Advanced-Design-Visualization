@@ -45,6 +45,9 @@ class Settings:
             os.environ.get("RUNS_DIR", Path(tempfile.gettempdir()) / "adv-viz-runs")
         )
     )
+    prebuilt_dir: Path | None = field(
+        default_factory=lambda: Path(os.environ["PREBUILT_DIR"]) if os.environ.get("PREBUILT_DIR") else None
+    )
 
     # Worker processes for sizing. One Archer Midnight sizing takes ~0.1 s (no plots).
     sizing_workers: int = field(default_factory=lambda: _int("SIZING_WORKERS", min(4, os.cpu_count() or 1)))

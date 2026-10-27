@@ -127,6 +127,7 @@ body {
 }
 
 .param-row {
+  position: relative;
   margin: 6px 0 10px;
 }
 
@@ -154,15 +155,137 @@ body {
   background: var(--accent);
 }
 
+/* The thumb sits in a segment that does not close: red thumb and red label marker. */
+.param-row.is-infeasible .param-changed {
+  background: var(--danger);
+}
+
 .param-inputs {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
+/* Slider track shaded by the feasibility slice: --track is a gradient built by
+   trackLayers() in scripts/feasibilityModel.js (green closes, red fails, amber
+   hatched for a layout constraint). No slice yet, or range finder off: the plain
+   track, maroon up to the thumb (--fill, set in form.js) and grey after it. */
 .param-slider {
   flex: 1 1 auto;
   min-width: 0;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.param-slider::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track, linear-gradient(90deg, var(--accent) 0 var(--fill, 0%), var(--line) var(--fill, 0%) 100%));
+}
+
+.param-slider::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--track, linear-gradient(90deg, var(--accent) 0 var(--fill, 0%), var(--line) var(--fill, 0%) 100%));
+}
+
+.param-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 0;
+}
+
+.param-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 0;
+}
+
+.param-slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.param-row.is-infeasible .param-slider::-webkit-slider-thumb {
+  background: var(--danger);
+}
+
+.param-row.is-infeasible .param-slider::-moz-range-thumb {
+  background: var(--danger);
+}
+
+.param-row.is-pending .param-slider {
+  animation: feas-pulse 1.4s ease-in-out infinite;
+}
+
+.param-row.is-stale .param-slider {
+  animation: feas-pulse 1.4s ease-in-out infinite;
+}
+
+/* "Checking" beside the label while this slider's slice is missing or stale. */
+.param-busy {
+  display: none;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
+.param-row.is-pending .param-busy,
+.param-row.is-stale .param-busy {
+  display: inline-flex;
+}
+
+.param-busy .spinner {
+  width: 10px;
+  height: 10px;
+  border-width: 1.5px;
+}
+
+@keyframes feas-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .param-row.is-pending .param-slider,
+  .param-row.is-stale .param-slider {
+    animation: none;
+    opacity: 0.6;
+  }
+
+  .spinner {
+    animation-duration: 2.4s;
+  }
+}
+
+.param-tip {
+  position: absolute;
+  top: 100%;
+  z-index: 2;
+  max-width: 260px;
+  margin-top: 2px;
+  padding: 4px 8px;
+  font-size: 11.5px;
+  line-height: 1.35;
+  color: var(--on-ink);
+  background: var(--tooltip-bg);
+  border-radius: var(--radius);
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
 .param-number {
@@ -184,10 +307,6 @@ body {
   margin-top: 2px;
 }
 
-.param-row.is-outside .param-note {
-  color: var(--danger);
-}
-
 .warnings {
   list-style: none;
   margin: 8px 0;
@@ -203,10 +322,284 @@ body {
   border-radius: var(--radius);
 }
 
+/* Reasons banner: under the baseline picker, sticky while the inputs scroll.
+   The text is the primary signal (aria-live); the slider shading repeats it. */
+.feasibility-banner {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 4px 0;
+  max-height: 36vh; /* many causes must not push the sliders out of reach */
+  overflow: auto;
+  background: var(--panel);
+}
+
+.banner-item {
+  margin: 4px 0;
+  padding: 6px 8px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-left: 3px solid var(--danger);
+  background: var(--danger-bg);
+  border-radius: var(--radius);
+}
+
+.banner-item.is-constraint {
+  border-left-color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.banner-item.is-ok {
+  border-left-color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.banner-item.is-pending {
+  border-left-color: var(--faint);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+
+.banner-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-small {
+  font-size: 11.5px;
+  padding: 2px 7px;
+  border-color: var(--line);
+}
+
+/* Range finder switch, above the constraints box. */
+.switch {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+
+.switch input {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+  flex: none;
+  width: 30px;
+  height: 17px;
+  margin: 0;
+  border-radius: 9px;
+  background: var(--line);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.switch input::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--surface);
+  transition: transform 0.15s;
+}
+
+.switch input:checked {
+  background: var(--ink);
+}
+
+.switch input:checked::before {
+  transform: translateX(13px);
+}
+
+.switch input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.switch-hint {
+  flex-basis: 100%;
+  padding-left: 38px;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+/* Range finder off: plain grey tracks, no "Checking" pulse. */
+.range-off .param-row.is-pending .param-slider,
+.range-off .param-row.is-stale .param-slider {
+  animation: none;
+  opacity: 1;
+}
+
+.range-off .param-row .param-busy {
+  display: none;
+}
+
+/* Read-only constraints box: a disclosure between the banner and the inputs. */
+.constraints {
+  margin: 0 0 18px; /* clear gap before the first input group */
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+
+.constraints-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.constraints-summary::-webkit-details-marker {
+  display: none;
+}
+
+.constraints-summary::after {
+  content: "▾";
+  margin-left: 4px;
+  color: var(--muted);
+}
+
+.constraints[open] .constraints-summary::after {
+  content: "▴";
+}
+
+/* Opening: the box grows downward where ::details-content is supported, and the
+   rows slide in everywhere. */
+.constraints {
+  interpolate-size: allow-keywords;
+}
+
+.constraints::details-content {
+  block-size: 0;
+  overflow: hidden;
+  transition: block-size 0.25s ease, content-visibility 0.25s allow-discrete;
+}
+
+.constraints[open]::details-content {
+  block-size: auto;
+}
+
+.constraints[open] > :not(summary) {
+  animation: constraints-drop 0.25s ease-out;
+}
+
+@keyframes constraints-drop {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .constraints::details-content { transition: none; }
+  .constraints[open] > :not(summary) { animation: none; }
+}
+
+.constraints-summary:hover {
+  background: var(--panel-2);
+}
+
+.constraints-summary:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.constraints-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.constraints-count.is-failing {
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.constraints-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 10px;
+}
+
+.constraint {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  gap: 8px;
+  align-items: baseline;
+  padding: 7px 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  border-top: 1px solid var(--line-soft);
+}
+
+.constraint-id {
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.constraint-now {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.constraint-state {
+  padding: 1px 7px;
+  font-size: 11.5px;
+  border-radius: 10px;
+  color: var(--ok);
+  background: var(--ok-bg);
+}
+
+.constraint.is-failing .constraint-state {
+  color: var(--warn);
+  background: var(--warn-bg);
+}
+
+.constraints-note {
+  margin: 0;
+  padding: 6px 10px 9px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+
 .panel-actions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   margin-top: 12px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.toggle input {
+  margin: 0;
+  width: 15px;
+  height: 15px;
 }
 
 .btn {
@@ -273,6 +666,48 @@ body {
 
 .view {
   min-height: 300px;
+}
+
+/* A newer run is on its way: the previous result stays readable but dimmed,
+   and the plot carries a "Sizing" overlay that is not dimmed. */
+.view .kpi-row,
+.view .run-meta,
+.view .warnings,
+.view .plot-head,
+.view .plot-figure {
+  transition: opacity 0.2s;
+}
+
+.view.is-pending .kpi-row,
+.view.is-pending .run-meta,
+.view.is-pending .warnings,
+.view.is-pending .plot-head,
+.view.is-pending .plot-figure {
+  opacity: 0.4;
+}
+
+.plot-card {
+  position: relative;
+}
+
+.plot-busy {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  display: none;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+  transform: translate(-50%, -50%);
+}
+
+.view.is-pending .plot-busy {
+  display: flex;
 }
 
 .empty-state {
@@ -365,11 +800,65 @@ body {
   padding: 12px;
 }
 
+.plot-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
 .image-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-bottom: 10px;
+}
+
+/* The plot no longer matches the inputs (auto-size off or held back). */
+.stale-note {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 4px 4px 4px 10px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: var(--warn-bg);
+  border-radius: var(--radius);
+}
+
+.stale-note[hidden] {
+  display: none;
+}
+
+.stale-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--warn);
+  flex: none;
+}
+
+.stale-action {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.stale-action:hover {
+  background: var(--panel-2);
+}
+
+.stale-action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
 
 .image-tab {
@@ -422,6 +911,147 @@ body {
   gap: 12px;
 }
 
+.screening-controls {
+  align-items: flex-end;
+}
+
+.screening-estimate {
+  display: inline-block;
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.screening-message {
+  margin-top: 10px;
+}
+
+.screening-sample-note {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 8px 0;
+}
+
+.screening-output-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.screening-output {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.screening-output[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--on-ink);
+}
+
+.screening-output:focus-visible,
+.tab:focus-visible,
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.screening-meta {
+  margin: 10px 0 4px;
+}
+
+.screening-warning {
+  display: inline-block;
+  margin: 0 0 8px;
+  padding: 5px 8px;
+  border-radius: var(--radius);
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.screening-warning[hidden] {
+  display: none;
+}
+
+.screening-charts {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.screening-chart-panel {
+  min-width: 0;
+}
+
+.screening-chart-title {
+  margin: 14px 0 0;
+  font-size: 14px;
+}
+
+.screening-chart {
+  min-width: 0;
+}
+
+.screening-ray-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 2px 8px 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.screening-ray-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.screening-ray-swatch {
+  width: 18px;
+  border-top: 1px dashed var(--muted);
+}
+
+.screening-reading-guide {
+  margin-top: 16px;
+  padding: 12px 14px;
+  background: var(--panel);
+  border-radius: var(--radius);
+}
+
+.screening-reading-guide h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.screening-reading-guide p {
+  margin: 4px 0;
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .control-action {
   display: flex;
   align-items: center;
@@ -463,5 +1093,9 @@ body {
   .d2-panel {
     position: static;
     max-height: none;
+  }
+
+  .screening-charts {
+    grid-template-columns: 1fr;
   }
 }

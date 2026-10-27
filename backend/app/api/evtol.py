@@ -1,19 +1,24 @@
-"""Demo 2 routes: evtolpy sizing, sweeps, sensitivity and ensembles."""
+"""Demo 2 routes: evtolpy sizing, sweeps, sensitivity, ensembles and feasibility slices."""
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import logging
 import math
+import time
 from datetime import datetime, timezone
+from functools import partial
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 
 from app.api import paths
-from app.api.schemas import EnsembleRequest, SensitivityRequest, SizeRequest, SweepRequest
+from app.api.schemas import EnsembleRequest, FeasibilityRequest, ScreeningRequest, SensitivityRequest, SizeRequest, SweepRequest
+from app.config import MAX_SCREENING_RUNS
 from app.services.evtol_model import (
     IMAGE_KINDS,
     SUMMARY_OUTPUTS,
@@ -21,16 +26,25 @@ from app.services.evtol_model import (
     apply_overrides,
     catalogue_index,
     check_constraints,
+    constraint_interval,
     design_values,
+    effective_range,
     size_design,
     size_summary,
     status_class,
 )
 from app.services.ensemble import build_payload, ensemble_id, normalize_collection, sample_inputs
+from app.services.feasibility import SliceJob, allowed_range, grid_values, run_slices, slice_id
 from app.services.runner import SizingTimeout
+from app.services.screening import analyze_screening, build_screening_design
 from app.services.store import run_id_for
 
+log = logging.getLogger("adv_viz")
 router = APIRouter(tags=["evtol"])
+
+# Slices after the priority ones are sized this many at a time, so their lines
+# trickle out instead of all arriving when the last one finishes.
+FEASIBILITY_GROUP = 4
 
 
 def _label(name: str) -> str:
@@ -74,7 +88,9 @@ def list_baselines(request: Request) -> dict:
     store = request.app.state.baselines
     return {
         "baselines": [
-            {"name": name, "label": _label(name), "design": design_values(store.get(name), catalogue)}
+            {"name": name, "label": _label(name), "design": design_values(store.get(name), catalogue),
+             # Tilt and total rotor counts are not sliders; the C4/C5 rows of the constraints box need them.
+             "rotors": {k: store.get(name)["propulsion"].get(k) for k in ("lift_rotor_count", "tilt_rotor_count", "rotor_count")}}
             for name in store.names()
         ]
     }
@@ -93,7 +109,8 @@ def get_parameters(request: Request) -> dict:
         "outputs": SUMMARY_OUTPUTS,
         "images": IMAGE_KINDS,
         "limits": {"max_sweep_points": settings.max_sweep_points,
-                   "max_ensemble_samples": settings.max_ensemble_samples},
+                   "max_ensemble_samples": settings.max_ensemble_samples,
+                   "max_screening_runs": MAX_SCREENING_RUNS},
     }
 
 
@@ -425,3 +442,146 @@ def get_ensemble(id: str, request: Request) -> dict:
         raise HTTPException(404, {"code": "unknown_ensemble", "message": f"No ensemble with id '{id}'."})
     collection = json.loads(path.read_text(encoding="utf-8"))
     return normalize_collection(collection)
+
+
+    return build_payload(body.baseline, body.seed, None, state.catalogue, inputs, summaries)
+
+
+@router.post(paths.EVTOL_FEASIBILITY)
+async def feasibility(body: FeasibilityRequest, request: Request) -> StreamingResponse:
+    """Feasible range of each slider with the other inputs held at the current
+    design. NDJSON: cached slices first, then one line per computed parameter
+    (priority first), then a summary line. Validation errors are raised before
+    the stream starts, so they are normal 404/422 responses.
+
+    Cancellation: Starlette cancels this generator as soon as the client
+    disconnects (StreamingResponse listens for http.disconnect), which also
+    cancels the pending runner.map, so no further round is submitted. Don't call
+    request.is_disconnected() in here: it would compete with that listener for
+    the same receive channel.
+    """
+    state = request.app.state
+    index = catalogue_index(state.catalogue)
+    keys = body.parameters or list(index)
+    unknown = [k for k in [*keys, *body.priority] if k not in index]
+    if unknown:
+        raise HTTPException(422, {"code": "unknown_parameter", "message": f"Unknown parameters: {unknown}"})
+
+    base = _baseline(request, body.baseline)
+    base_config = _apply(request, base, body.overrides)
+    design = design_values(base_config, state.catalogue)
+    max_iter = state.settings.feasibility_max_iter
+
+    def make_config(key: str, value: float) -> dict:
+        return apply_overrides(base, {**body.overrides, key: value}, state.catalogue, enforce_bounds=False)
+
+    cached: list[dict] = []
+    jobs: dict[str, SliceJob] = {}
+    ids: dict[str, str] = {}
+    for key in dict.fromkeys(keys):
+        spec = index[key]
+        ids[key] = slice_id(body.baseline, design, key, body.resolution, body.refine, max_iter)
+        hit = state.slices.load(ids[key])
+        if hit is not None:
+            cached.append({**hit, "current": design[key]})  # the slice doesn't depend on key's own value
+            continue
+        limit = effective_range(spec, base[spec["section"]][key])
+        bounds = constraint_interval(base_config, key)
+        scan = allowed_range(limit, bounds)
+        values = grid_values(*scan, body.resolution, spec["integer"]) if scan else []
+        jobs[key] = SliceJob(key=key, limit=limit, current=design[key], bounds=bounds, integer=spec["integer"],
+                             make_config=partial(make_config, key), scan=scan if values else None, values=values)
+
+    first = [jobs[k] for k in dict.fromkeys(body.priority) if k in jobs]
+    rest = [job for job in jobs.values() if job not in first]
+    groups = [g for g in [first] if g] + [rest[i:i + FEASIBILITY_GROUP] for i in range(0, len(rest), FEASIBILITY_GROUP)]
+
+    sizer = partial(size_summary, max_iter=max_iter)
+    counter = {"runs": 0}
+
+    async def size_fn(configs: list[dict]) -> list[dict]:
+        counter["runs"] += len(configs)
+        return await state.runner.map(sizer, configs)
+
+    def ndjson(obj: dict) -> str:
+        return json.dumps(obj) + "\n"
+
+    async def stream():
+        started = time.perf_counter()
+        for line in cached:
+            yield ndjson(line)
+        try:
+            for group in groups:
+                async for line in run_slices(group, size_fn, body.refine):
+                    state.slices.save(ids[line["param"]], line)
+                    yield ndjson(line)
+        except SizingTimeout as exc:
+            # Headers are already out; report the failure as a line instead of a 504.
+            yield ndjson({"error": {"code": "sizing_timeout", "message": str(exc)}})
+            return
+        except asyncio.CancelledError:
+            log.info("feasibility cancelled by the client after %d runs", counter["runs"])
+            raise
+        yield ndjson({"done": True, "n_runs": counter["runs"],
+                      "elapsed_s": round(time.perf_counter() - started, 2), "cached": len(cached)})
+
+    return StreamingResponse(stream(), media_type="application/x-ndjson", headers={"X-Accel-Buffering": "no"})
+
+@router.post(paths.EVTOL_SCREENING)
+async def screening(body: ScreeningRequest, request: Request) -> dict:
+    state = request.app.state
+    base = _baseline(request, body.baseline)
+    unknown_outputs = sorted(set(body.outputs) - set(SUMMARY_OUTPUTS))
+    if unknown_outputs or not body.outputs or len(set(body.outputs)) != len(body.outputs):
+        reason = (
+            f"Unknown outputs: {unknown_outputs}."
+            if unknown_outputs
+            else "Outputs must be a non-empty list without duplicates."
+        )
+        raise HTTPException(422, {
+            "code": "invalid_screening_outputs",
+            "message": reason,
+        })
+
+    factor_count = sum(1 for spec in state.catalogue["parameters"] if spec["key"] != "tilt_rotor_count")
+    n_runs = body.r * (factor_count + 1)
+    if n_runs > MAX_SCREENING_RUNS:
+        raise HTTPException(422, {
+            "code": "too_many_screening_runs",
+            "message": f"{n_runs} runs requested; the limit is {MAX_SCREENING_RUNS}.",
+        })
+
+    try:
+        design = build_screening_design(
+            state.catalogue, body.r, body.levels, body.seed, body.bounds
+        )
+    except ValueError as exc:
+        raise HTTPException(422, {"code": "invalid_screening_request", "message": str(exc)}) from exc
+
+    canonical = json.dumps(body.model_dump(mode="json"), sort_keys=True, separators=(",", ":"))
+    cache_key = hashlib.sha256(canonical.encode()).hexdigest()
+    cached = state.runs.load_screening(cache_key)
+    if cached is not None:
+        return {**cached, "cached": True}
+
+    started = time.perf_counter()
+    configs = [
+        _apply(request, base, point, enforce_bounds=False)
+        for point in design.overrides
+    ]
+    summaries = await _map(request, size_summary, configs)
+    n_constraint = sum(bool(check_constraints(config)) for config in configs)
+    payload = analyze_screening(
+        design,
+        summaries,
+        body.outputs,
+        body.r,
+        body.seed,
+        n_constraint=n_constraint,
+        elapsed_s=time.perf_counter() - started,
+    )
+    payload["baseline"] = body.baseline
+    payload["cached"] = False
+    payload["elapsed_s"] = round(time.perf_counter() - started, 3)
+    state.runs.save_screening(cache_key, payload)
+    return payload

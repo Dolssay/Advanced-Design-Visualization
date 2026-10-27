@@ -30,6 +30,8 @@ EVTOL_SENSITIVITY = f"{EVTOL}/sensitivity"
 EVTOL_ENSEMBLE = f"{EVTOL}/ensemble"
 EVTOL_ENSEMBLES = f"{EVTOL}/ensembles"
 EVTOL_COLLECTION = f"{EVTOL}/ensembles/{{id}}"
+EVTOL_FEASIBILITY = f"{EVTOL}/feasibility"
+EVTOL_SCREENING = f"{EVTOL}/screening"
 
 
 def run_image_url(run_id: str, kind: str) -> str:

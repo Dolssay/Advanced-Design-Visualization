@@ -67,6 +67,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                     except Exception as e:
                         log.warning("failed to parse %s: %s", idx_path, e)
                     break
+        state.slices = RunStore(settings.runs_dir / "feasibility")  # one cached line per feasibility slice
+        state.slices.prepare()
         state.runner = SizingRunner(settings.sizing_workers, settings.sizing_timeout_s)
         state.runner.start()
         await _warm_up(app)

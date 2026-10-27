@@ -15,6 +15,7 @@ from pathlib import Path
 from app import __version__
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+MAX_SCREENING_RUNS = 600
 
 
 def _int(name: str, default: int) -> int:
@@ -53,6 +54,10 @@ class Settings:
     sizing_timeout_s: int = field(default_factory=lambda: _int("SIZING_TIMEOUT_S", 60))
     max_sweep_points: int = field(default_factory=lambda: _int("MAX_SWEEP_POINTS", 41))
     max_ensemble_samples: int = field(default_factory=lambda: _int("MAX_ENSEMBLE_SAMPLES", 200))
+    # MTOW iteration cap for feasibility scans. Designs near a feasibility boundary
+    # creep towards evtolpy's 150-iteration cap; 60 keeps a slice's worst point
+    # under ~0.1 s and classifies it as max_iter.
+    feasibility_max_iter: int = field(default_factory=lambda: _int("FEASIBILITY_MAX_ITER", 60))
 
     # Size this baseline at startup; /readyz stays 503 until it succeeds.
     warmup_baseline: str = field(default_factory=lambda: os.environ.get("WARMUP_BASELINE", "Archer_Midnight"))

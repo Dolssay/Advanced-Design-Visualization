@@ -75,6 +75,7 @@ GET  /api/v1/evtol/runs/{run_id}/images/{kind}.png
 POST /api/v1/evtol/sweep
 POST /api/v1/evtol/sensitivity
 POST /api/v1/evtol/ensemble
+POST /api/v1/evtol/screening
 ```
 
 The backend declares them in `backend/app/api/paths.py`; the frontend names the same

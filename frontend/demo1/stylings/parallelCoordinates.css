@@ -31,6 +31,8 @@
   position: absolute;
   inset: 0;
   width: 100%;
+  /* match .parallel-svg so lines stay on the axes when the frame scrolls */
+  min-width: 720px;
   height: 100%;
   cursor: pointer;
 }
@@ -89,6 +91,17 @@
   gap: 6px;
   color: var(--ink);
   font-size: 13px;
+}
+
+.parallel-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
 }
 
 .parallel-legend-swatch {

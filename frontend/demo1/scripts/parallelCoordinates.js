@@ -35,7 +35,7 @@ export function createParallelCoordinates(data, controller = null, contentContro
     colorBy: (row) => color(row.Label),
     drawOrder,
     title: "GTB777 Parallel Coordinates",
-    subtitle: "Each line represents one aircraft design; colors indicate feasibility level.",
+        subtitle: "Each line represents one aircraft design; colors indicate feasibility level. Drag an axis title to reorder the axes.",
     colorDomain,
     colorRange,
     controller,

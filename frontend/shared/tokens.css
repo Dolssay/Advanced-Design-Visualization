@@ -33,6 +33,11 @@
   --label-l22: #d55e00;
   --label-l21: #0072b2;
   --label-l11: #009e73;
+  /* GTB777 (Demo 1) labels: the JMP scheme, blue / black / red / grey */
+  --gtb-label-infeasible: #b0b0b0;
+  --gtb-label-l22: #d62728;
+  --gtb-label-l21: #000000;
+  --gtb-label-l11: #4a90e2;
   --selection: #861f41;
   --data-low: #d55e00;
   --data-high: #0072b2;
@@ -76,6 +81,10 @@
     --label-l22: #e69f00;
     --label-l21: #56b4e9;
     --label-l11: #36b487;
+    --gtb-label-infeasible: #747474;
+    --gtb-label-l22: #ef5350;
+    --gtb-label-l21: #e6e6e6; /* black would vanish on the dark surface */
+    --gtb-label-l11: #64a8f0;
     --selection: #e88aa7;
     --data-low: #e69f00;
     --data-high: #56b4e9;

@@ -39,9 +39,19 @@ export function zoomablePlot({
   container.style.setProperty("--plot-height", `${height}px`);
 
   const canvas = document.createElement("canvas");
-  const pixelRatio = window.devicePixelRatio || 1;
-  canvas.width = Math.round(width * pixelRatio);
-  canvas.height = Math.round(height * pixelRatio);
+  let pixelRatio = 0;
+  // Size the backing store for the current screen. Called before every draw so a
+  // move to a monitor with a different display scaling picks up the new ratio.
+  function syncCanvasResolution() {
+    const ratio = window.devicePixelRatio || 1;
+    if (ratio === pixelRatio) {
+      return;
+    }
+    pixelRatio = ratio;
+    canvas.width = Math.round(width * ratio);
+    canvas.height = Math.round(height * ratio);
+  }
+  syncCanvasResolution();
   canvas.className = "zoomable-plot-canvas";
 
   const selectionOverlay = controller?.createSelectionOverlay
@@ -174,7 +184,7 @@ export function zoomablePlot({
     const yTicks = yScale.ticks(5);
 
     context.save();
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
     context.strokeStyle = cssVar("--line-soft", "#e9e9e6");
     context.fillStyle = cssVar("--ink", "#141414");
     context.lineWidth = 1;
@@ -238,7 +248,7 @@ export function zoomablePlot({
     const highlightedPointIds = controller?.getHighlightedPointIds?.() ?? new Set();
     const highlightedPoints = [];
     context.save();
-    context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+    context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
     context.globalAlpha = 0.78;
     let batchColor = null;
     let batchPath = null;
@@ -398,7 +408,11 @@ export function zoomablePlot({
   function render() {
     renderQueued = false;
     const { xScale, yScale } = getScales();
-    canvasContext.clearRect(0, 0, width, height);
+    syncCanvasResolution();
+    // Clear the whole backing store in device pixels; clearing width x height CSS px
+    // left old frames in the lower right on screens scaled above 100%.
+    canvasContext.setTransform(1, 0, 0, 1, 0, 0);
+    canvasContext.clearRect(0, 0, canvas.width, canvas.height);
     drawAxes(canvasContext, xScale, yScale);
     drawPoints(canvasContext, xScale, yScale);
 
@@ -719,6 +733,8 @@ export function zoomablePlot({
     zoomToTransform(currentTransform);
   }
 
+  // Browser zoom and moving between monitors change devicePixelRatio and fire resize.
+  window.addEventListener("resize", scheduleRender);
   canvas.addEventListener("mousemove", handlePointerMove);
   canvas.addEventListener("mouseleave", () => {
     hideTooltip(hoverTooltip);

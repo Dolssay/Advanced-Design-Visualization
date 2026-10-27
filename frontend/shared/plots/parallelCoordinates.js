@@ -17,6 +17,9 @@ const WORKER_CHUNK_ROWS = 1500;
 const WORKER_PROGRESS_INTERVAL_MS = 48;
 const BACKGROUND_ALPHA = 0.27;
 const BACKGROUND_LINE_WIDTH = 1.25;
+// Lines per label drawn live while an axis is dragged (the full set is too slow per frame)
+const PREVIEW_ROWS_PER_LABEL = 700;
+const PREVIEW_ALPHA = 0.35;
 
 const supportsOffThreadRender =
   typeof Worker !== "undefined" &&
@@ -34,7 +37,7 @@ const supportsOffThreadRender =
  */
 export function createParallelCoordinates(data = [], config = {}) {
   const {
-    dimensions = [],
+        dimensions: configDimensions = [],
     colorBy: customColorBy = null,
     drawOrder = DEFAULT_DRAW_ORDER,
     title: chartTitle = "Parallel Coordinates",
@@ -53,8 +56,11 @@ export function createParallelCoordinates(data = [], config = {}) {
     onClick = null,
     width = 1180,
     height = 560,
-    margin = null,
+        margin = null,
   } = config;
+
+  // Own copy: Demo 1 reorders it in place when an axis is dragged
+  const dimensions = configDimensions.slice();
 
   const isDemo1Mode = Boolean(controller || contentController || workerUrl);
 
@@ -83,6 +89,13 @@ export function createParallelCoordinates(data = [], config = {}) {
   let hoveredId = null;
   let currentColorByMode = "status";
   let suppressBrushEvent = false;
+  // Demo 1: when true, hide the full dataset and show only drawn/pinned lines
+    let highlightedOnly = false;
+  // Demo 1: true while an axis is dragged (the dense background is hidden)
+  let axisDragging = false;
+    let dragStartOrder = "";
+  // x of the axis under the cursor, so lines follow it exactly during a drag
+  let dragOverride = null;
 
   const root = document.createElement("div");
   root.className = "parallel-container";
@@ -156,11 +169,15 @@ export function createParallelCoordinates(data = [], config = {}) {
   frame.className = "parallel-frame";
   frame.style.position = "relative";
   frame.style.width = "100%";
-  frame.style.height = `${height}px`;
   frame.style.borderRadius = "var(--radius, 2px)";
   frame.style.background = "var(--surface, #ffffff)";
   frame.style.border = "1px solid var(--line, #d3d3cf)";
-  frame.style.overflow = "hidden";
+  if (!isDemo1Mode) {
+    // Demo 2 overlays an absolute SVG on a fixed-height frame. In Demo 1 the
+    // in-flow SVG sets the frame height, so the stretched canvas matches the axes.
+    frame.style.height = `${height}px`;
+    frame.style.overflow = "hidden";
+  }
 
   const canvas = document.createElement("canvas");
   canvas.className = "parallel-canvas";
@@ -203,13 +220,16 @@ export function createParallelCoordinates(data = [], config = {}) {
   const availWidth = innerWidth - totalGap;
   const step = dimCount > 1 ? availWidth / (dimCount - 1) : 0;
 
-  dimensions.forEach((dim, idx) => {
-    let px = idx * step;
-    if (gapBeforeIndex >= 0 && idx >= gapBeforeIndex) {
-      px += gapPx;
-    }
-    xPositions.set(dim.key, px);
-  });
+    function layoutAxes() {
+    dimensions.forEach((dim, idx) => {
+      let px = idx * step;
+      if (gapBeforeIndex >= 0 && idx >= gapBeforeIndex) {
+        px += gapPx;
+      }
+      xPositions.set(dim.key, px);
+    });
+  }
+  layoutAxes();
 
   // Scales
   const scales = new Map();
@@ -292,9 +312,13 @@ export function createParallelCoordinates(data = [], config = {}) {
     return sc(Number(val));
   }
 
+    function axisX(dim) {
+    return dragOverride && dragOverride.key === dim.key ? dragOverride.x : xPositions.get(dim.key);
+  }
+
   function getRowPoints(row) {
     return dimensions.map((dim) => [
-      finalMargin.left + xPositions.get(dim.key),
+      finalMargin.left + axisX(dim),
       finalMargin.top + getPointY(dim, row),
     ]);
   }
@@ -372,17 +396,64 @@ export function createParallelCoordinates(data = [], config = {}) {
       const row = rowsById.get(pointId);
       if (!row || (visibleLabels && !visibleLabels.has(row.Label))) continue;
       const path = getRowPath(pointId, row);
-      context.globalAlpha = 1;
-      context.lineWidth = 3;
-      context.strokeStyle = getSketchColor
+      const lineColor = getSketchColor
         ? getSketchColor(controller?.getDrawnPointColorIndex?.(pointId) ?? drawIndex)
         : "#2563eb";
+      context.globalAlpha = 1;
+      if (!highlightedOnly) {
+        // outline so the drawn line stands out on top of the full dataset
+        context.lineWidth = 5;
+        context.strokeStyle = getHighlightOutlineColor
+          ? getHighlightOutlineColor(lineColor, { dark: HIGHLIGHT_OUTLINE_COLOR })
+          : HIGHLIGHT_OUTLINE_COLOR;
+        context.stroke(path);
+      }
+      context.lineWidth = 3;
+      context.strokeStyle = lineColor;
       context.stroke(path);
     }
   }
 
+    // Evenly spaced sample of each label's rows, built on first use
+  let previewRowsByLabel = null;
+  function getPreviewRows(label) {
+    if (!previewRowsByLabel) {
+      previewRowsByLabel = new Map();
+      for (const [key, rows] of rowsByLabel) {
+        const stride = Math.max(1, rows.length / PREVIEW_ROWS_PER_LABEL);
+        const sample = [];
+        for (let i = 0; i < rows.length; i += stride) sample.push(rows[Math.floor(i)]);
+        previewRowsByLabel.set(key, sample);
+      }
+    }
+    return previewRowsByLabel.get(label) ?? [];
+  }
+
+  function drawPreviewLines(visibleLabels) {
+    context.globalAlpha = PREVIEW_ALPHA;
+    context.lineWidth = 1;
+    for (const label of colorDomain) {
+      if (!visibleLabels.has(label)) continue;
+      const path = new Path2D();
+      for (const row of getPreviewRows(label)) {
+        getRowPoints(row).forEach(([pointX, pointY], index) => {
+          if (index === 0) path.moveTo(pointX, pointY);
+          else path.lineTo(pointX, pointY);
+        });
+      }
+      context.strokeStyle = getRowColor({ Label: label });
+      context.stroke(path);
+    }
+    context.globalAlpha = 1;
+  }
+
   function drawCachedBackground(visibleLabels) {
-    if (controller?.getDrawnPointIds?.().size) return;
+    if (highlightedOnly) return;
+    if (axisDragging || pendingRebuild.size) {
+      // moving lines during a drag, and until the full redraw has finished
+      drawPreviewLines(visibleLabels);
+      return;
+    }
     context.globalAlpha = 1;
     if (colorDomain) {
       for (const label of colorDomain) {
@@ -415,7 +486,9 @@ export function createParallelCoordinates(data = [], config = {}) {
     return flat;
   }
 
-  let worker = null;
+    let worker = null;
+  // labels whose full background is still being redrawn after an axis move
+  const pendingRebuild = new Set();
   let nextRequestId = 0;
   const requestIdByKey = new Map();
   const pendingBitmaps = new Map();
@@ -439,7 +512,8 @@ export function createParallelCoordinates(data = [], config = {}) {
   }
 
   function buildBackgroundsOnWorker() {
-    if (!workerUrl || !colorDomain) return;
+        if (!workerUrl || !colorDomain) return;
+    if (!worker) {
     worker = new Worker(workerUrl, { type: "module" });
     worker.onmessage = (event) => {
       const message = event.data;
@@ -450,9 +524,11 @@ export function createParallelCoordinates(data = [], config = {}) {
       }
       const prev = pendingBitmaps.get(message.canvasKey);
       if (prev) prev.close();
-      pendingBitmaps.set(message.canvasKey, message.bitmap);
+                        pendingBitmaps.set(message.canvasKey, message.bitmap);
+      if (message.done) pendingRebuild.delete(message.canvasKey);
       schedulePaint();
     };
+    }
 
     const axisPositions = new Float32Array(
       dimensions.map((dim) => finalMargin.left + xPositions.get(dim.key))
@@ -499,15 +575,18 @@ export function createParallelCoordinates(data = [], config = {}) {
     }
   }
 
-  function buildBackgroundsOnMainThread(labelIndex = 0, rowIndex = 0) {
-    if (!colorDomain || labelIndex >= colorDomain.length) {
+    let mainThreadGen = 0;
+  function buildBackgroundsOnMainThread(labelIndex = 0, rowIndex = 0, gen = mainThreadGen) {
+    if (gen !== mainThreadGen) return;
+        if (!colorDomain || labelIndex >= colorDomain.length) {
+      pendingRebuild.clear();
       render();
       return;
     }
     const label = colorDomain[labelIndex];
     const labelRows = rowsByLabel.get(label) ?? [];
     if (!labelRows.length) {
-      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0));
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0, gen));
       return;
     }
     const cache = getOrCreateLabelCache(label);
@@ -544,9 +623,27 @@ export function createParallelCoordinates(data = [], config = {}) {
     render();
 
     if (endIndex < labelRows.length) {
-      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex, endIndex));
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex, endIndex, gen));
     } else {
-      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0));
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread(labelIndex + 1, 0, gen));
+    }
+  }
+
+    // Redraw the dense background after the axes were reordered
+    function rebuildBackgrounds() {
+    pendingRebuild.clear();
+    for (const label of colorDomain ?? []) {
+      if ((rowsByLabel.get(label) ?? []).length) pendingRebuild.add(label);
+    }
+    for (const cache of labelCanvasCache.values()) {
+      cache.getContext("2d").clearRect(0, 0, width, height);
+    }
+    rasterCanvasCache.clear();
+    if (supportsOffThreadRender && workerUrl) {
+      buildBackgroundsOnWorker();
+    } else {
+      mainThreadGen++;
+      window.requestAnimationFrame(() => buildBackgroundsOnMainThread());
     }
   }
 
@@ -658,7 +755,45 @@ export function createParallelCoordinates(data = [], config = {}) {
     }
   }
 
-  // --- SVG Axes & Brushes ---
+    // --- SVG Axes & Brushes ---
+  function moveAxes(dragged, dragX) {
+    axesGroup
+      .selectAll(".parallel-axis")
+      .attr("transform", (d) => `translate(${d === dragged ? dragX : xPositions.get(d.key)},0)`);
+  }
+
+  // Demo 1: drag an axis title sideways to reorder the axes
+  const axisDrag = d3
+    .drag()
+    .subject((event, dim) => ({ x: xPositions.get(dim.key), y: 0 }))
+    .on("start", (event, dim) => {
+      axisDragging = true;
+      dragStartOrder = dimensions.map((d) => d.key).join("|");
+      axesGroup.selectAll(".parallel-axis-label").style("cursor", "grabbing");
+      render();
+    })
+    .on("drag", (event, dim) => {
+            const dragX = Math.max(0, Math.min(innerWidth, event.x));
+      dragOverride = { key: dim.key, x: dragX };
+      const at = (d) => (d === dim ? dragX : xPositions.get(d.key));
+      dimensions.sort((a, b) => at(a) - at(b));
+      layoutAxes();
+      moveAxes(dim, dragX);
+      highlightedPathCache.clear();
+      render();
+    })
+    .on("end", () => {
+            axisDragging = false;
+      dragOverride = null;
+      axesGroup.selectAll(".parallel-axis-label").style("cursor", "grab");
+      moveAxes(null, 0);
+      highlightedPathCache.clear();
+      if (dimensions.map((d) => d.key).join("|") !== dragStartOrder) {
+        rebuildBackgrounds();
+      }
+      render();
+    });
+
   function renderAxes() {
     axesGroup.selectAll("*").remove();
     brushesGroup.selectAll("*").remove();
@@ -668,8 +803,9 @@ export function createParallelCoordinates(data = [], config = {}) {
       const sc = scales.get(dim.key);
       const axisG = axesGroup
         .append("g")
-        .attr("class", "parallel-axis")
-        .attr("transform", `translate(${xPos},0)`);
+                .attr("class", "parallel-axis")
+        .attr("transform", `translate(${xPos},0)`)
+        .datum(dim);
 
       let axisGen;
       if (dim.type === "category") {
@@ -704,7 +840,13 @@ export function createParallelCoordinates(data = [], config = {}) {
         .attr("transform", "rotate(-32)")
         .attr("x", 4)
         .attr("y", -14)
-        .text(dim.label);
+                .text(dim.label);
+
+      if (isDemo1Mode) {
+        // the SVG ignores the pointer so clicks reach the canvas; the title is the drag handle
+        axisG.select(".parallel-axis-label").style("pointer-events", "all").style("cursor", "grab");
+        axisG.call(axisDrag);
+      }
 
       // No-value mark on output axes
       if (dim.hasNoValue) {
@@ -912,6 +1054,21 @@ export function createParallelCoordinates(data = [], config = {}) {
       item.append(swatch, text);
       legend.appendChild(item);
     });
+
+    const toggle = document.createElement("label");
+    toggle.className = "parallel-toggle";
+    const toggleInput = document.createElement("input");
+    toggleInput.type = "checkbox";
+    toggleInput.checked = highlightedOnly;
+    toggleInput.addEventListener("change", () => {
+      highlightedOnly = toggleInput.checked;
+      render();
+    });
+    const toggleText = document.createElement("span");
+    toggleText.textContent = "Highlighted only";
+    toggle.append(toggleInput, toggleText);
+    legend.appendChild(toggle);
+
     root.appendChild(legend);
   }
 

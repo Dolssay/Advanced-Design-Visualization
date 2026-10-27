@@ -5,10 +5,10 @@ import { cssVar } from "./colorUtils.js";
 
 export const LABEL_DOMAIN = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
 export const LABEL_COLORS = [
-  cssVar("--label-infeasible", "#bdbdbd"),
-  cssVar("--label-l22", "#d55e00"),
-  cssVar("--label-l21", "#0072b2"),
-  cssVar("--label-l11", "#009e73")
+  cssVar("--gtb-label-infeasible", "#b0b0b0"),
+  cssVar("--gtb-label-l22", "#d62728"),
+  cssVar("--gtb-label-l21", "#000000"),
+  cssVar("--gtb-label-l11", "#4a90e2")
 ];
 
 export function getLabelColor(label) {

@@ -1,0 +1,25 @@
+{
+  "_note": "14 CFR Part 25 checks for the GTB777 design space. Read by tools/demo1-prep/filterGTB777.py, tools/demo1-prep/make_gtb777_glee_runs.py and frontend/demo1/scripts/certMarginsGTB777.js. Limits with basis 'flag' were recovered from the 0/1 columns of MonteCarlo.csv (they split pass from fail exactly); 'cfr' limits are the two-engine minimums in 14 CFR 25.107 and 25.121. 'column' is the native value written to GTB777.csv: exp() of a Log[] column, a climb gradient in percent, or the column as is. Margin is (value - limit) / |limit| in percent, or value - limit in percentage points when the limit is 0.",
+  "sections": [
+    { "code": "Mission", "title": "Mission range" },
+    { "code": "§25.107", "title": "Takeoff speeds" },
+    { "code": "§25.121", "title": "Climb, one engine out" },
+    { "code": "§25.125", "title": "Landing" },
+    { "code": "§25.143", "title": "Controllability" },
+    { "code": "§25.181", "title": "Dynamic stability" }
+  ],
+  "requirements": [
+    { "section": "Mission", "name": "Max range", "short": "Range", "column": "Cert max range (nmi)", "source": "Pred Formula Log[Mission_MaxRange_nmi]", "transform": "exp", "limit": 7530, "op": ">=", "limitText": "≥ 7,530 nmi", "unit": " nmi", "dp": 0, "basis": "flag" },
+    { "section": "§25.107", "name": "V2 / VSR", "short": "§25.107 V2/VSR", "column": "Cert 25.107 V2/VSR", "source": "Predicted Log[Cert_S107_V2_VSR_Ratio]", "transform": "exp", "limit": 1.13, "op": ">=", "limitText": "≥ 1.13", "unit": "", "dp": 3, "basis": "cfr" },
+    { "section": "§25.107", "name": "V2 / VMC", "short": "§25.107 V2/VMC", "column": "Cert 25.107 V2/VMC", "source": "Predicted Log[Cert_S107_V2_Vmc_Ratio]", "transform": "exp", "limit": 1.10, "op": ">=", "limitText": "≥ 1.10", "unit": "", "dp": 3, "basis": "cfr" },
+    { "section": "§25.107", "name": "VR / VMC", "short": "§25.107 VR/VMC", "column": "Cert 25.107 VR/VMC", "source": "Pred Formula Log[Cert_S107_VR_Vmc_Ratio]", "transform": "exp", "limit": 1.05, "op": ">=", "limitText": "≥ 1.05", "unit": "", "dp": 3, "basis": "cfr" },
+    { "section": "§25.121", "name": "(a) Gear down", "short": "§25.121(a) climb", "column": "Cert 25.121a gradient (%)", "source": "Pred Formula Cert_S121a_Grad_Climb", "transform": "pct", "limit": 0, "op": ">", "limitText": "> 0%", "unit": "%", "dp": 2, "basis": "cfr" },
+    { "section": "§25.121", "name": "(b) Takeoff", "short": "§25.121(b) climb", "column": "Cert 25.121b gradient (%)", "source": "Pred Formula Cert_S121b_Grad_Climb", "transform": "pct", "limit": 2.4, "op": ">=", "limitText": "≥ 2.4%", "unit": "%", "dp": 2, "basis": "cfr" },
+    { "section": "§25.121", "name": "(c) Final takeoff", "short": "§25.121(c) climb", "column": "Cert 25.121c gradient (%)", "source": "Predicted Cert_S121c_Grad_Climb", "transform": "pct", "limit": 1.2, "op": ">=", "limitText": "≥ 1.2%", "unit": "%", "dp": 2, "basis": "cfr" },
+    { "section": "§25.121", "name": "(d) Approach", "short": "§25.121(d) climb", "column": "Cert 25.121d gradient (%)", "source": "Predicted Cert_S121d_Grad_Climb", "transform": "pct", "limit": 2.1, "op": ">=", "limitText": "≥ 2.1%", "unit": "%", "dp": 2, "basis": "cfr" },
+    { "section": "§25.125", "name": "Touchdown rate", "short": "§25.125 touchdown", "column": "Cert 25.125 touchdown rate", "source": "Pred Formula Cert_S125_RoD_TD", "transform": null, "limit": -6, "op": ">=", "limitText": "≥ −6", "unit": "", "dp": 2, "basis": "flag" },
+    { "section": "§25.143", "name": "Rudder, takeoff one engine out", "short": "§25.143 rudder", "column": "Cert 25.143 rudder takeoff OEI (deg)", "source": "Predicted Cert_S143_Takeoff_CEI_dr", "transform": null, "limit": -23.2, "op": ">=", "limitText": "≥ −23.2°", "unit": "°", "dp": 1, "basis": "flag" },
+    { "section": "§25.181", "name": "Takeoff damping ζ (2,2)", "short": "§25.181 ζ (2,2)", "column": "Cert 25.181 takeoff damping (2,2)", "source": "Pred Formula Log[Cert_S181_Takeoff_xi_2_2]", "transform": "exp", "limit": 0.04, "op": ">=", "limitText": "≥ 0.04", "unit": "", "dp": 4, "basis": "flag" },
+    { "section": "§25.181", "name": "Takeoff damping ζ (2,5)", "short": "§25.181 ζ (2,5)", "column": "Cert 25.181 takeoff damping (2,5)", "source": "Pred Formula Log[Cert_S181_Takeoff_xi_2_5]", "transform": "exp", "limit": 0.04, "op": ">=", "limitText": "≥ 0.04", "unit": "", "dp": 4, "basis": "flag" }
+  ]
+}

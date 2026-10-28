@@ -3,6 +3,7 @@ import "../shared/d3-global.js";
 import { loadGTB777Data } from "./scripts/filteredGTB777.js";
 import { createScatterplotMatrix } from "./scripts/splomGTB777.js";
 import { createParallelCoordinates } from "./scripts/parallelCoordinates.js";
+import { createCertificationMargins } from "./scripts/certMarginsGTB777.js";
 import { createTornadoPlot } from "./scripts/tornadoPlot.js";
 import { createBoxViolinPlot } from "./scripts/boxViolinPlot.js";
 import { createHeatmapPlot } from "./scripts/heatmapPlot.js";
@@ -21,6 +22,7 @@ const controller = createToolController();
 const LINKED_PLOTS = [
   { id: "plot-scatterplot-matrix", title: "Scatterplot Matrix" },
   { id: "plot-parallel-coordinates", title: "Parallel Coordinates" },
+  { id: "plot-certification", title: "Certification Margins" },
   { id: "plot-box-violin", title: "Box & Violin by Label" },
   { id: "plot-heatmap", title: "Design-Space Heatmap" },
   // Filter-only: reacts to the label filter but not to highlighted points.
@@ -48,6 +50,7 @@ async function init() {
     const linkedNodes = {
       "plot-scatterplot-matrix": () => createScatterplotMatrix(data, controller, contentController),
       "plot-parallel-coordinates": () => createParallelCoordinates(data, controller, contentController),
+      "plot-certification": () => createCertificationMargins(data, controller, contentController),
       "plot-tornado": () => createTornadoPlot(data, contentController, profilerModel),
       "plot-box-violin": () => createBoxViolinPlot(data, controller, contentController),
       "plot-heatmap": () => createHeatmapPlot(data, controller, contentController)

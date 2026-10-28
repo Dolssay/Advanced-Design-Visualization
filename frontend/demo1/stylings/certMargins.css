@@ -1,0 +1,250 @@
+.cert-container {
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.cert-header {
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.cert-title {
+  font-family: var(--font);
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.cert-subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  max-width: 80ch;
+  margin: 0 auto;
+  line-height: 1.5;
+}
+
+.cert-card {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+  min-width: 0;
+}
+
+.cert-card h3 {
+  font-size: 15px;
+  margin: 0;
+}
+
+.cert-card-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 16px;
+  margin-bottom: 8px;
+}
+
+.cert-note {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 2px 0 8px;
+}
+
+.cert-card-head .cert-note {
+  margin: 0;
+}
+
+.cert-note-bad {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Scorecard */
+.cert-scorecard {
+  margin-bottom: 16px;
+}
+
+.cert-scorecard-body {
+  overflow-x: auto;
+}
+
+.cert-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13px;
+}
+
+.cert-table th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 6px 8px;
+  white-space: nowrap;
+}
+
+.cert-table th.cert-design-head {
+  color: var(--ink);
+  text-align: right;
+}
+
+.cert-table td {
+  padding: 5px 8px;
+  border-top: 1px solid var(--line-soft);
+  white-space: nowrap;
+}
+
+.cert-section-cell {
+  color: var(--muted);
+}
+
+.cert-num {
+  text-align: right;
+}
+
+.cert-margin {
+  text-align: left;
+  min-width: 64px;
+}
+
+.cert-fail {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.cert-fail-count {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.cert-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+}
+
+.cert-bar-cell {
+  width: 64px;
+  padding-right: 4px !important;
+}
+
+.cert-mini {
+  position: relative;
+  width: 56px;
+  height: 6px;
+  background: var(--panel-2);
+}
+
+.cert-mini span {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+
+.cert-mini i {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  left: 50%;
+  width: 1px;
+  background: var(--ink);
+}
+
+.cert-empty {
+  border: 1px dashed var(--line);
+  border-radius: var(--radius);
+  padding: 24px 16px;
+  text-align: center;
+  color: var(--muted);
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.cert-empty strong {
+  display: block;
+  color: var(--ink);
+  font-size: 15px;
+  margin-bottom: 4px;
+}
+
+/* Finding and margin cards */
+.cert-finding {
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin: 0 0 12px;
+  line-height: 1.5;
+  font-size: 14px;
+}
+
+.cert-cards {
+  display: grid;
+  /* columns are set by certMarginsGTB777.js from the measured width */
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
+.cert-cards svg {
+  display: block;
+  overflow: visible;
+}
+
+.cert-tick {
+  font-size: 11px;
+  fill: var(--muted);
+}
+
+.cert-row-label {
+  font-size: 12px;
+  font-weight: 600;
+  fill: var(--ink);
+}
+
+.cert-grid {
+  stroke: var(--line-soft);
+}
+
+.cert-whisker {
+  stroke: var(--muted);
+  stroke-width: 1;
+}
+
+.cert-limit {
+  stroke: var(--ink);
+  stroke-width: 1.5;
+}
+
+.cert-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: center;
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.cert-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cert-legend i {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+}
+
+.cert-legend i.cert-legend-whisker {
+  width: 18px;
+  height: 1px;
+  background: var(--muted);
+}
+
+.cert-legend i.cert-legend-limit {
+  width: 2px;
+  height: 14px;
+  background: var(--ink);
+}

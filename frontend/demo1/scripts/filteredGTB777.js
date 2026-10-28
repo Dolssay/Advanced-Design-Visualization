@@ -1,3 +1,5 @@
+import certSpec from "./certRequirements.json";
+
 const SELECT_COLUMNS = [
   "ARHT",
   "TRHT",
@@ -10,7 +12,9 @@ const SELECT_COLUMNS = [
   "Label",
   "OEW (1000 lbm)",
   "Block Fuel (1000 lbm)",
-  "Cruise CD (count)"
+  "Cruise CD (count)",
+  // native value of each 14 CFR Part 25 check, for the certification plots
+  ...certSpec.requirements.map((requirement) => requirement.column)
 ];
 
 export async function loadGTB777Data(csvUrl) {

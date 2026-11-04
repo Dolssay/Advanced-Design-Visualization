@@ -37,8 +37,11 @@ async function init() {
   try {
     // Served from frontend/public/data/ by Vite in dev and by nginx in the container.
     // ?data=GTB777-1M loads the full Monte Carlo set instead (generated locally, not in git).
+    // It is too big for git, so a deploy can host it elsewhere (e.g. Vercel Blob) and set
+    // VITE_GTB777_1M_URL at build time.
     const dataset = new URLSearchParams(location.search).get("data") ?? "GTB777";
-    const data = await loadGTB777Data(`${import.meta.env.BASE_URL}data/${dataset}.bin`);
+    const remoteUrl = dataset === "GTB777-1M" ? import.meta.env.VITE_GTB777_1M_URL : null;
+    const data = await loadGTB777Data(remoteUrl || `${import.meta.env.BASE_URL}data/${dataset}.bin`);
     const contentController = createContentController(data);
     // Fit once; the profiler and tornado plot share the same response model.
     const profilerModel = createGTB777ProfilerModel(data);

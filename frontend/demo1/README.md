@@ -28,7 +28,7 @@ This folder contains a static browser viewer for the GTB777 dataset (`GTB777.bin
    ```bash
    python tools/demo1-prep/filterGTB777.py --input data/MonteCarlo.csv --output frontend/public/data/GTB777.bin
    ```
-   For the full 1M-design set (not in git), write `GTB777-1M.bin` from `data/MonteCarlo1M.csv` and open `/demo1/?data=GTB777-1M`.
+   For the full 1M-design set (not in git), write `GTB777-1M.bin` from `data/MonteCarlo1M.csv` and open `/demo1/?data=GTB777-1M`. On a deploy, host that file elsewhere (it is too big for git, e.g. Vercel Blob) and set `VITE_GTB777_1M_URL` to its URL at build time; `?data=GTB777-1M` then loads it from there.
 
 2. Start the Vite dev server from `frontend/`:
    ```bash

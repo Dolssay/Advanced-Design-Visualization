@@ -36,7 +36,9 @@ const STANDALONE_PLOTS = [
 async function init() {
   try {
     // Served from frontend/public/data/ by Vite in dev and by nginx in the container.
-    const data = await loadGTB777Data(`${import.meta.env.BASE_URL}data/GTB777.csv`);
+    // ?data=GTB777-1M loads the full Monte Carlo set instead (generated locally, not in git).
+    const dataset = new URLSearchParams(location.search).get("data") ?? "GTB777";
+    const data = await loadGTB777Data(`${import.meta.env.BASE_URL}data/${dataset}.bin`);
     const contentController = createContentController(data);
     // Fit once; the profiler and tornado plot share the same response model.
     const profilerModel = createGTB777ProfilerModel(data);

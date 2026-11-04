@@ -104,7 +104,13 @@ function createSelect(labelText, options, initialValue, onChange) {
 export function createHeatmapPlot(data, controller = null, contentController = null) {
   const metrics = buildMetrics();
   const lut = buildLut();
-  const rowsById = new Map(data.map((row) => [`point-${row.__rowId}`, row]));
+  // The Content box already maps point ids to rows; a second 1M-entry map costs ~0.5 s
+  let rowsById = null;
+  const rowForPointId = (pointId) => {
+    if (contentController?.getRowByPointId) return contentController.getRowByPointId(pointId);
+    rowsById ??= new Map(data.map((row) => [`point-${row.__rowId}`, row]));
+    return rowsById.get(pointId);
+  };
 
   const state = {
     xCol: DIMENSIONS.findIndex((dimension) => dimension.key === "SHT (sqft)"),
@@ -115,11 +121,26 @@ export function createHeatmapPlot(data, controller = null, contentController = n
     interpolate: true
   };
 
+  // One plain pass per column fills the worker's Float32 column and the axis range
+  // (from the full-precision values, as d3.extent did). Reading 1M row objects is the cost.
+  const columns = [];
   const domains = DIMENSIONS.map((dimension) => {
-    const extent = d3.extent(data, (row) => Number(row[dimension.key]));
-    const span = extent[1] - extent[0] || 1;
+    const key = dimension.key;
+    const column = new Float32Array(data.length);
+    let min;
+    let max;
+    for (let index = 0; index < data.length; index++) {
+      const value = Number(data[index][key]);
+      column[index] = value;
+      if (value >= value) {
+        if (min === undefined || min > value) min = value;
+        if (max === undefined || max < value) max = value;
+      }
+    }
+    columns.push(column);
+    const span = max - min || 1;
     // Nudge the max so the largest value lands inside the last bin.
-    return [extent[0], extent[1] + span * 1e-6];
+    return [min, max + span * 1e-6];
   });
 
   // --- DOM ---------------------------------------------------------------------------
@@ -310,17 +331,10 @@ export function createHeatmapPlot(data, controller = null, contentController = n
   // --- Worker plumbing -----------------------------------------------------------------
 
   const labelIndex = new Map(LABEL_DOMAIN.map((label, index) => [label, index]));
-  const columns = DIMENSIONS.map((dimension) => {
-    const column = new Float32Array(data.length);
-    data.forEach((row, index) => {
-      column[index] = Number(row[dimension.key]);
-    });
-    return column;
-  });
   const labelCodes = new Uint8Array(data.length);
-  data.forEach((row, index) => {
-    labelCodes[index] = labelIndex.get(row.Label) ?? LABEL_DOMAIN.length;
-  });
+  for (let index = 0; index < data.length; index++) {
+    labelCodes[index] = labelIndex.get(data[index].Label) ?? LABEL_DOMAIN.length;
+  }
 
   let worker = null;
   let fallbackDataset = null;
@@ -541,7 +555,7 @@ export function createHeatmapPlot(data, controller = null, contentController = n
     const drawn = controller.getDrawnPointIds?.() ?? new Set();
     const markers = [];
     for (const pointId of new Set([...pinned, ...highlighted, ...drawn])) {
-      const row = rowsById.get(pointId);
+      const row = rowForPointId(pointId);
       if (!row || !selected.has(row.Label)) continue;
       markers.push({
         pointId,

@@ -1,4 +1,5 @@
 import certSpec from "./certRequirements.json";
+import { readColumnFile } from "./columnFile.js";
 
 const SELECT_COLUMNS = [
   "ARHT",
@@ -17,17 +18,28 @@ const SELECT_COLUMNS = [
   ...certSpec.requirements.map((requirement) => requirement.column)
 ];
 
-export async function loadGTB777Data(csvUrl) {
-  const data = await d3.csv(csvUrl, d3.autoType);
-  const filteredData = data.map((d, index) => {
+export async function loadGTB777Data(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`${url}: ${response.status} ${response.statusText}`);
+  }
+  const { rows, labels, columns } = readColumnFile(await response.arrayBuffer());
+  const missing = SELECT_COLUMNS.filter((column) => !columns[column]);
+  if (missing.length) {
+    throw new Error(`${url} is missing columns: ${missing.join(", ")}`);
+  }
+
+  // shortcut: plots still read row objects; build them until they read the columns directly.
+  const filteredData = new Array(rows);
+  for (let index = 0; index < rows; index++) {
     const row = { __rowId: index };
-
     for (const column of SELECT_COLUMNS) {
-      row[column] = column === "Label" ? d[column] ?? "" : d[column];
+      const value = columns[column][index];
+      // NaN marks an empty CSV cell, which d3.autoType used to turn into null
+      row[column] = column === "Label" ? labels[value] : Number.isNaN(value) ? null : value;
     }
-
-    return row;
-  });
+    filteredData[index] = row;
+  }
 
   return filteredData.filter((d) =>
     d["OEW (1000 lbm)"] != null && !Number.isNaN(d["OEW (1000 lbm)"]) &&

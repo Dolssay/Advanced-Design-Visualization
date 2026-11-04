@@ -16,7 +16,8 @@ frontend/dist/
 /data/*
 *.png
 *.csv
-!frontend/public/data/GTB777.csv
+# Full 1M-design Demo 1 set: ~185 MB, regenerate with tools/demo1-prep/filterGTB777.py
+frontend/public/data/GTB777-1M.bin
 
 # Claude artifacts
 .claude/

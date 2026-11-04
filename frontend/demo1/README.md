@@ -1,12 +1,13 @@
 # WebViz Viewer
 
-This folder contains a static browser viewer for the `GTB777.csv` dataset.
+This folder contains a static browser viewer for the GTB777 dataset (`GTB777.bin`).
 
 ## Files
 
 - `index.html` - page shell for the scatterplot matrix viewer
 - `main.js` - entrypoint that loads the CSV and attaches the plot
-- `scripts/filteredGTB777.js` - CSV loader and data filter
+- `scripts/filteredGTB777.js` - dataset loader and data filter
+- `scripts/columnFile.js` - reads the binary column file into typed arrays
 - `scripts/splomGTB777.js` - scatterplot matrix builder
 - `scripts/tools.js` - shared toolbar and plot interaction controller
 - `scripts/zoomablePlot.js` - zoom/pan scatterplot cell renderer
@@ -25,8 +26,9 @@ This folder contains a static browser viewer for the `GTB777.csv` dataset.
 
 1. Regenerate the dataset only if the Monte Carlo export changed (see `tools/demo1-prep/README.md`):
    ```bash
-   python tools/demo1-prep/filterGTB777.py --input data/MonteCarlo.csv --output frontend/public/data/GTB777.csv
+   python tools/demo1-prep/filterGTB777.py --input data/MonteCarlo.csv --output frontend/public/data/GTB777.bin
    ```
+   For the full 1M-design set (not in git), write `GTB777-1M.bin` from `data/MonteCarlo1M.csv` and open `/demo1/?data=GTB777-1M`.
 
 2. Start the Vite dev server from `frontend/`:
    ```bash
@@ -46,11 +48,11 @@ Demo 1 needs no backend. The page loads d3 from npm (`shared/d3-global.js`) inst
 
 ## Notes
 
-- The page fetches `/data/GTB777.csv`, served from `frontend/public/data/` (Vite in dev, nginx in the container).
+- The page fetches `/data/GTB777.bin`, served from `frontend/public/data/` (Vite in dev, nginx in the container).
 - Use the dev server rather than `file://`: ES modules, workers and the CSV fetch need HTTP.
 - If you change the data file, refresh the page to reload the updated dataset.
 
 ## Troubleshooting
 
 - If the browser shows a module import error, confirm `npm run dev` is running and that you opened `http://localhost:5173/demo1/`.
-- If `GTB777.csv` fails to load, verify the file exists at `frontend/public/data/GTB777.csv`.
+- If `GTB777.bin` fails to load, verify the file exists at `frontend/public/data/GTB777.bin`.

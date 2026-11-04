@@ -2,12 +2,6 @@ import { zoomablePlot } from "./zoomablePlot.js";
 import { createGTB777Sketch } from "./sketchGTB777.js";
 import { LABEL_COLORS } from "./gtb777Dimensions.js";
 
-const drawOrder = {
-  "Infeasible": 0,
-  "Level 2-2": 1,
-  "Level 2-1": 2,
-  "Level 1-1": 3
-};
 const colorDomain = ["Infeasible", "Level 2-2", "Level 2-1", "Level 1-1"];
 const colorRange = LABEL_COLORS;
 
@@ -35,14 +29,8 @@ function createLegend() {
 }
 
 export function createScatterplotMatrix(data, controller, contentController = null) {
-  const getLabelOrder = (label) => (label in drawOrder ? drawOrder[label] : Number.POSITIVE_INFINITY);
-  const sortedData = [...data].sort((a, b) => {
-    const orderDelta = getLabelOrder(a.Label) - getLabelOrder(b.Label);
-    if (orderDelta !== 0) {
-      return orderDelta;
-    }
-    return String(a.Label ?? "").localeCompare(String(b.Label ?? ""));
-  });
+  // Draw order (later labels on top) comes from colorDomain inside zoomablePlot.
+  const sortedData = data;
   const variables = [
     { key: "OEW (1000 lbm)" },
     { key: "Block Fuel (1000 lbm)" },
@@ -149,9 +137,8 @@ export function createScatterplotMatrix(data, controller, contentController = nu
 }
 
 function d3Extent(data, key) {
-  const values = data.map((d) => d[key]);
-  const min = Math.min(...values);
-  const max = Math.max(...values);
+  // d3.extent, not Math.min(...values): spreading 1M values overflows the call stack
+  const [min, max] = d3.extent(data, (d) => d[key]);
   const range = max - min;
   return [min - 0.02 * range, max + 0.02 * range];
 }

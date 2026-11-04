@@ -8,6 +8,7 @@ import certSpec from "./certRequirements.json";
 import { LABEL_DOMAIN, LABEL_COLORS, SELECTION_COLOR } from "./gtb777Dimensions.js";
 import { getGTB777SketchColor } from "./sketchGTB777.js";
 import { cssVar } from "./colorUtils.js";
+import { quantile } from "./quantile.js";
 
 const REQUIREMENTS = certSpec.requirements;
 const SECTIONS = certSpec.sections;
@@ -63,36 +64,42 @@ function sectionName(section) {
   return section.code === "Mission" ? section.title : `${section.code} ${section.title}`;
 }
 
-function quantile(sorted, q) {
-  if (!sorted.length) return NaN;
-  const position = (sorted.length - 1) * q;
-  const low = Math.floor(position);
-  const high = Math.ceil(position);
-  return sorted[low] + (sorted[high] - sorted[low]) * (position - low);
-}
-
 // Per requirement: failures in the whole subset, and per label the 10th, 50th and
 // 90th percentile of the margin.
-function computeStats(data) {
+// Typed arrays and quickselect: a plain array sorted with a compare function took about
+// a second per requirement at 1M designs.
+export function computeStats(data) {
+  const labelIndex = new Map(LABEL_DOMAIN.map((label, index) => [label, index]));
+  const labelOf = Int8Array.from(data, (row) => labelIndex.get(row.Label) ?? -1);
+  const margins = new Float64Array(data.length);
   return REQUIREMENTS.map((requirement) => {
-    const byLabel = new Map(LABEL_DOMAIN.map((label) => [label, []]));
+    const counts = new Array(LABEL_DOMAIN.length).fill(0);
     let fails = 0;
-    for (const row of data) {
-      const value = row[requirement.column];
+    for (let i = 0; i < data.length; i++) {
+      const value = data[i][requirement.column];
+      margins[i] = NaN;
       if (value == null || !Number.isFinite(value)) continue;
       if (!passesLimit(requirement, value)) fails++;
-      byLabel.get(row.Label)?.push(marginOf(requirement, value));
+      if (labelOf[i] < 0) continue;
+      margins[i] = marginOf(requirement, value);
+      counts[labelOf[i]]++;
+    }
+    const byLabel = counts.map((count) => new Float64Array(count));
+    const filled = new Array(LABEL_DOMAIN.length).fill(0);
+    for (let i = 0; i < data.length; i++) {
+      if (Number.isNaN(margins[i])) continue;
+      byLabel[labelOf[i]][filled[labelOf[i]]++] = margins[i];
     }
     const stats = {};
-    for (const [label, values] of byLabel) {
-      values.sort((a, b) => a - b);
+    LABEL_DOMAIN.forEach((label, index) => {
+      const values = byLabel[index];
       stats[label] = {
         n: values.length,
         p10: quantile(values, 0.1),
         p50: quantile(values, 0.5),
         p90: quantile(values, 0.9)
       };
-    }
+    });
     return { requirement, fails, stats };
   });
 }
@@ -113,7 +120,6 @@ function niceDomain(values) {
 
 export function createCertificationMargins(data, controller = null, contentController = null) {
   const statsByColumn = new Map(computeStats(data).map((entry) => [entry.requirement.column, entry]));
-  const rowsById = new Map(data.map((row) => [`point-${row.__rowId}`, row]));
   const labelColor = new Map(LABEL_DOMAIN.map((label, index) => [label, LABEL_COLORS[index]]));
   const total = data.length;
 
@@ -162,7 +168,7 @@ export function createCertificationMargins(data, controller = null, contentContr
     const ordered = [...pinned.filter((p) => drawn.has(p.id)), ...pinned.filter((p) => !drawn.has(p.id))];
     return ordered
       .map((point) => {
-        const row = rowsById.get(point.id);
+        const row = point.row;
         if (!row) return null;
         const colorIndex = drawn.has(point.id) ? controller?.getDrawnPointColorIndex?.(point.id) : null;
         return {

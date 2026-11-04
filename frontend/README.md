@@ -14,7 +14,7 @@ npm run preview   # serve dist/ with the same /api proxy
 | `/` | `index.html` (landing) |
 | `/demo1/` | `demo1/` (GTB777 viewer, needs no backend) |
 | `/demo2/` | `demo2/` (eVTOL sizing, needs the backend) |
-| `/data/GTB777.csv` | `public/data/GTB777.csv` |
+| `/data/GTB777.bin` | `public/data/GTB777.bin` |
 
 ## Calling the backend
 

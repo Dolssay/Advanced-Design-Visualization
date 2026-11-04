@@ -35,6 +35,18 @@ const supportsOffThreadRender =
  * @param {Object} config - Configuration object.
  * @returns {HTMLElement & { element: HTMLElement, setRows: Function, setFilters: Function, highlight: Function, destroy: Function }}
  */
+// Same order as comparing labels with localeCompare, but equal labels (nearly every pair
+// at 1M designs) skip the string comparison.
+function sortByDrawOrder(rows, drawOrder) {
+  rows.sort((a, b) => {
+    const aVal = a.Label ?? a.status;
+    const bVal = b.Label ?? b.status;
+    const orderDelta = (drawOrder[aVal] ?? 99) - (drawOrder[bVal] ?? 99);
+    if (orderDelta || aVal === bVal) return orderDelta;
+    return String(aVal ?? "").localeCompare(String(bVal ?? ""));
+  });
+}
+
 export function createParallelCoordinates(data = [], config = {}) {
   const {
         dimensions: configDimensions = [],
@@ -74,18 +86,14 @@ export function createParallelCoordinates(data = [], config = {}) {
   const innerHeight = height - finalMargin.top - finalMargin.bottom;
   const noValueY = innerHeight + 22; // "no value" band below the axis line
 
+  let sourceRows = data; // same rows as currentRows, unsorted
   let currentRows = data.slice();
   if (drawOrder) {
-    currentRows.sort((a, b) => {
-      const aVal = a.Label ?? a.status;
-      const bVal = b.Label ?? b.status;
-      const orderDelta = (drawOrder[aVal] ?? 99) - (drawOrder[bVal] ?? 99);
-      return orderDelta || String(aVal ?? "").localeCompare(String(bVal ?? ""));
-    });
+    sortByDrawOrder(currentRows, drawOrder);
   }
 
   let activeFilters = {};
-  let selectedIdSet = new Set(currentRows.map((r) => r.run ?? r.__rowId));
+  let selectedIdSet = isDemo1Mode ? new Set() : new Set(currentRows.map((r) => r.run ?? r.__rowId));
   let hoveredId = null;
   let currentColorByMode = "status";
   let suppressBrushEvent = false;
@@ -244,10 +252,17 @@ export function createParallelCoordinates(data = [], config = {}) {
         const sc = d3.scalePoint().domain(domain).range([innerHeight, 0]);
         scales.set(dim.key, sc);
       } else {
-        const values = currentRows
-          .map((r) => Number(r[dim.key]))
-          .filter((v) => typeof v === "number" && Number.isFinite(v));
-        let extent = d3.extent(values);
+        // Plain loop over the rows in their given order: reading them in draw order and
+        // through d3.extent's callback took ~2.4 s for 11 axes at 1M designs.
+        let lo = Infinity;
+        let hi = -Infinity;
+        for (let i = 0; i < sourceRows.length; i++) {
+          const v = Number(sourceRows[i][dim.key]);
+          if (!Number.isFinite(v)) continue;
+          if (v < lo) lo = v;
+          if (v > hi) hi = v;
+        }
+        let extent = lo <= hi ? [lo, hi] : [undefined, undefined];
         if (!extent[0] && !extent[1]) {
           extent = [dim.min ?? 0, dim.max ?? 1];
         }
@@ -331,11 +346,26 @@ export function createParallelCoordinates(data = [], config = {}) {
   const rasterCanvasCache = new Map();
 
   for (const row of currentRows) {
-    const pointId = `point-${row.__rowId ?? row.run}`;
-    rowsById.set(pointId, row);
+    // Demo 1's Content box already maps point ids to rows; a second 1M-entry map is slow
+    if (!contentController?.getRowByPointId) {
+      rowsById.set(`point-${row.__rowId ?? row.run}`, row);
+    }
     if (row.Label && rowsByLabel.has(row.Label)) {
       rowsByLabel.get(row.Label).push(row);
     }
+  }
+
+  function rowForPointId(pointId) {
+    return contentController?.getRowByPointId ? contentController.getRowByPointId(pointId) : rowsById.get(pointId);
+  }
+
+  // Labels drawn right now. Read from the Content box rather than refiltering every row
+  // on each redraw (hover, pin, paint), which took ~100 ms per redraw at 1M designs.
+  let labelsInRows = null;
+  function getVisibleLabels() {
+    if (contentController) return contentController.getSelectedLabels();
+    labelsInRows ??= new Set(currentRows.map((row) => row.Label));
+    return labelsInRows;
   }
 
   function getVisibleData() {
@@ -359,7 +389,7 @@ export function createParallelCoordinates(data = [], config = {}) {
     const pinnedPointIds = controller?.getAllPinnedIds?.() ?? new Set();
     if (!pinnedPointIds.size) return;
     for (const pointId of pinnedPointIds) {
-      const row = rowsById.get(pointId);
+      const row = rowForPointId(pointId);
       if (!row || (visibleLabels && !visibleLabels.has(row.Label))) continue;
       const path = getRowPath(pointId, row);
       context.globalAlpha = 1;
@@ -373,7 +403,7 @@ export function createParallelCoordinates(data = [], config = {}) {
     const highlightedPointIds = controller?.getHighlightedPointIds?.() ?? new Set();
     if (!highlightedPointIds.size) return;
     for (const pointId of highlightedPointIds) {
-      const row = rowsById.get(pointId);
+      const row = rowForPointId(pointId);
       if (!row || (visibleLabels && !visibleLabels.has(row.Label))) continue;
       const path = getRowPath(pointId, row);
       context.globalAlpha = 1;
@@ -393,7 +423,7 @@ export function createParallelCoordinates(data = [], config = {}) {
   function drawHighlightedLines(visibleLabels) {
     const drawnPointIds = controller?.getDrawnPointIds?.() ?? new Set();
     for (const [pointId, drawIndex] of drawnPointIds.entries()) {
-      const row = rowsById.get(pointId);
+      const row = rowForPointId(pointId);
       if (!row || (visibleLabels && !visibleLabels.has(row.Label))) continue;
       const path = getRowPath(pointId, row);
       const lineColor = getSketchColor
@@ -477,12 +507,15 @@ export function createParallelCoordinates(data = [], config = {}) {
   }
 
   function buildRowsFloatArray(labelRows) {
-    const flat = new Float32Array(labelRows.length * dimensions.length);
-    labelRows.forEach((row, rowIndex) => {
-      dimensions.forEach((dim, dimIndex) => {
-        flat[rowIndex * dimensions.length + dimIndex] = Number(row[dim.key]);
-      });
-    });
+    const count = dimensions.length;
+    const flat = new Float32Array(labelRows.length * count);
+    // Column by column: one key per pass reads the row objects much faster
+    for (let dimIndex = 0; dimIndex < count; dimIndex++) {
+      const key = dimensions[dimIndex].key;
+      for (let rowIndex = 0; rowIndex < labelRows.length; rowIndex++) {
+        flat[rowIndex * count + dimIndex] = Number(labelRows[rowIndex][key]);
+      }
+    }
     return flat;
   }
 
@@ -650,9 +683,8 @@ export function createParallelCoordinates(data = [], config = {}) {
   // --- Rendering Pipeline ---
   function render() {
     if (isDemo1Mode) {
-      const visibleData = getVisibleData();
       context.clearRect(0, 0, width, height);
-      const visibleLabels = new Set(visibleData.map((row) => row.Label));
+      const visibleLabels = getVisibleLabels();
       drawCachedBackground(visibleLabels);
       drawContentBoxSelectionLines(visibleLabels);
       drawHoverAndPinHighlights(visibleLabels);
@@ -988,11 +1020,21 @@ export function createParallelCoordinates(data = [], config = {}) {
     let closestDist = 8;
     let closestRow = null;
     const candidates = isDemo1Mode ? getVisibleData() : currentRows;
+    // Only segments whose x span reaches within 8 px of the pointer can be closer than 8 px
+    const xs = dimensions.map((dim) => finalMargin.left + axisX(dim));
+    const near = [];
+    for (let i = 0; i < xs.length - 1; i++) {
+      if (mx >= Math.min(xs[i], xs[i + 1]) - closestDist && mx <= Math.max(xs[i], xs[i + 1]) + closestDist) {
+        near.push(i);
+      }
+    }
+    if (!near.length) return null;
 
     for (const row of candidates) {
-      const pts = getRowPoints(row);
-      for (let i = 0; i < pts.length - 1; i++) {
-        const d = distToSegment([mx, my], pts[i], pts[i + 1]);
+      for (const i of near) {
+        const v = [xs[i], finalMargin.top + getPointY(dimensions[i], row)];
+        const w = [xs[i + 1], finalMargin.top + getPointY(dimensions[i + 1], row)];
+        const d = distToSegment([mx, my], v, w);
         if (d < closestDist) {
           closestDist = d;
           closestRow = row;
@@ -1109,15 +1151,12 @@ export function createParallelCoordinates(data = [], config = {}) {
   // Return DOM node with public API attached
   root.element = root;
   root.setRows = function (newRows) {
-    currentRows = (newRows || []).slice();
+    sourceRows = newRows || [];
+    currentRows = sourceRows.slice();
     if (drawOrder) {
-      currentRows.sort((a, b) => {
-        const aVal = a.Label ?? a.status;
-        const bVal = b.Label ?? b.status;
-        const orderDelta = (drawOrder[aVal] ?? 99) - (drawOrder[bVal] ?? 99);
-        return orderDelta || String(aVal ?? "").localeCompare(String(bVal ?? ""));
-      });
+      sortByDrawOrder(currentRows, drawOrder);
     }
+    labelsInRows = null;
     buildScales();
     renderAxes();
     recomputeSelection();

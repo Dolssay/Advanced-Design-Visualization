@@ -148,19 +148,20 @@ function countBetween(sorted, low, high) {
 export function createBoxViolinPlot(data, controller = null, contentController = null) {
   const innerWidth = PANEL_WIDTH - PANEL_MARGIN.left - PANEL_MARGIN.right;
   const innerHeight = PANEL_HEIGHT - PANEL_MARGIN.top - PANEL_MARGIN.bottom;
-  const rowsById = new Map(data.map((row) => [`point-${row.__rowId}`, row]));
+  // The Content box already maps point ids to rows; a second 1M-entry map costs ~0.5 s
+  let rowsById = null;
+  const rowForPointId = (pointId) => {
+    if (contentController?.getRowByPointId) return contentController.getRowByPointId(pointId);
+    rowsById ??= new Map(data.map((row) => [`point-${row.__rowId}`, row]));
+    return rowsById.get(pointId);
+  };
   const labelCounts = new Map(LABEL_DOMAIN.map((label) => [label, 0]));
   for (const row of data) {
     labelCounts.set(row.Label, (labelCounts.get(row.Label) ?? 0) + 1);
   }
 
-  const yScales = new Map(DIMENSIONS.map((dimension) => {
-    const extent = d3.extent(data, (row) => Number(row[dimension.key]));
-    const span = extent[1] - extent[0] || 1;
-    return [dimension.key, d3.scaleLinear()
-      .domain([extent[0] - span * 0.03, extent[1] + span * 0.03])
-      .range([innerHeight, 0])];
-  }));
+  // Filled with the stats below; panels only render once those exist.
+  const yScales = new Map();
 
   // Stats never depend on the label filter (filtering only hides whole labels), so they
   // are computed once, lazily, the first time the section comes near the viewport.
@@ -259,23 +260,43 @@ export function createBoxViolinPlot(data, controller = null, contentController =
   }
 
   function computeAllStats() {
-    const valuesByLabel = new Map(LABEL_DOMAIN.map((label) => [label, []]));
-    for (const row of data) {
-      valuesByLabel.get(row.Label)?.push(row);
+    const labelIndex = new Map(LABEL_DOMAIN.map((label, index) => [label, index]));
+    const codes = new Int8Array(data.length);
+    const sizes = new Int32Array(LABEL_DOMAIN.length);
+    for (let index = 0; index < data.length; index++) {
+      const code = labelIndex.get(data[index].Label) ?? -1;
+      codes[index] = code;
+      if (code >= 0) sizes[code]++;
     }
     statsByDimension = new Map();
     for (const dimension of DIMENSIONS) {
-      const [domainMin, domainMax] = yScales.get(dimension.key).domain();
-      const byLabel = new Map();
-      for (const label of LABEL_DOMAIN) {
-        const rows = valuesByLabel.get(label);
-        const values = new Float64Array(rows.length);
-        rows.forEach((row, index) => {
-          values[index] = Number(row[dimension.key]);
-        });
-        byLabel.set(label, computeGroupStats(values, domainMin, domainMax));
+      const key = dimension.key;
+      // One in-order pass per column gives the axis range (as d3.extent did, over every
+      // row) and each label's values; reading the rows grouped by label was 3x slower.
+      const groups = Array.from(sizes, (size) => new Float64Array(size));
+      const cursors = new Int32Array(LABEL_DOMAIN.length);
+      let min;
+      let max;
+      for (let index = 0; index < data.length; index++) {
+        const value = Number(data[index][key]);
+        if (value >= value) {
+          if (min === undefined || min > value) min = value;
+          if (max === undefined || max < value) max = value;
+        }
+        const code = codes[index];
+        if (code >= 0) groups[code][cursors[code]++] = value;
       }
-      statsByDimension.set(dimension.key, byLabel);
+      const span = max - min || 1;
+      const y = d3.scaleLinear()
+        .domain([min - span * 0.03, max + span * 0.03])
+        .range([innerHeight, 0]);
+      yScales.set(key, y);
+      const [domainMin, domainMax] = y.domain();
+      const byLabel = new Map();
+      LABEL_DOMAIN.forEach((label, code) => {
+        byLabel.set(label, computeGroupStats(groups[code], domainMin, domainMax));
+      });
+      statsByDimension.set(key, byLabel);
     }
   }
 
@@ -328,7 +349,7 @@ export function createBoxViolinPlot(data, controller = null, contentController =
     const ids = new Set([...pinned, ...highlighted, ...drawn]);
     const markers = [];
     for (const pointId of ids) {
-      const row = rowsById.get(pointId);
+      const row = rowForPointId(pointId);
       if (!row || !selected.has(row.Label)) continue;
       const drawIndex = drawn.has(pointId)
         ? controller.getDrawnPointColorIndex?.(pointId)

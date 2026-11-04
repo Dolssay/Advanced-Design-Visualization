@@ -7,7 +7,7 @@ These instructions apply to files in this `frontend/demo1` directory (formerly `
 - Keep `index.html`, `main.js`, and `README.md` at the root of `demo1`.
 - Store JavaScript helper modules in `scripts/`.
 - Store CSS stylesheets in `stylings/`.
-- The viewer loads `/data/GTB777.csv` from `frontend/public/data/`; do not copy data into `demo1`.
+- The viewer loads `/data/GTB777.bin` (a column file from `tools/demo1-prep/filterGTB777.py`, read by `scripts/columnFile.js`) from `frontend/public/data/`; do not copy data into `demo1`.
 
 ## JavaScript
 

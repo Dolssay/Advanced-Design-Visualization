@@ -1,5 +1,5 @@
 {
-  "_note": "14 CFR Part 25 checks for the GTB777 design space. Read by tools/demo1-prep/filterGTB777.py, tools/demo1-prep/make_gtb777_glee_runs.py and frontend/demo1/scripts/certMarginsGTB777.js. Limits with basis 'flag' were recovered from the 0/1 columns of MonteCarlo.csv (they split pass from fail exactly); 'cfr' limits are the two-engine minimums in 14 CFR 25.107 and 25.121. 'column' is the native value written to GTB777.csv: exp() of a Log[] column, a climb gradient in percent, or the column as is. Margin is (value - limit) / |limit| in percent, or value - limit in percentage points when the limit is 0.",
+  "_note": "14 CFR Part 25 checks for the GTB777 design space. Read by tools/demo1-prep/filterGTB777.py, tools/demo1-prep/make_gtb777_glee_runs.py and frontend/demo1/scripts/certMarginsGTB777.js. Limits with basis 'flag' were recovered from the 0/1 columns of MonteCarlo.csv (they split pass from fail exactly); 'cfr' limits are the two-engine minimums in 14 CFR 25.107 and 25.121. 'column' is the native value written to GTB777.bin: exp() of a Log[] column, a climb gradient in percent, or the column as is. Margin is (value - limit) / |limit| in percent, or value - limit in percentage points when the limit is 0.",
   "sections": [
     { "code": "Mission", "title": "Mission range" },
     { "code": "§25.107", "title": "Takeoff speeds" },

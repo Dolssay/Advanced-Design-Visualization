@@ -1,4 +1,5 @@
 import { cssVar, getHighlightOutlineColor } from "./colorUtils.js";
+import { binPoints, growMarkers, colorize, nearestPoint } from "./scatterRaster.js";
 
 export function zoomablePlot({
   data,
@@ -76,37 +77,81 @@ export function zoomablePlot({
   const canvasContext = canvas.getContext("2d");
   const plotSelection = d3.select(canvas);
 
-  let pointData = [];
+  // Points as columns: one object (and tooltip string) per point does not fit at 1M designs.
+  const labelColors = colorDomain ? colorDomain.map((label) => fill(label)) : ["steelblue"];
+  const labelRanks = new Map((colorDomain ?? []).map((label, index) => [label, index]));
+  // Same look as the old per-point squares: alpha 0.78, later labels drawn on top.
+  const labelRgba = labelColors.map((color) => {
+    const { r, g, b } = d3.rgb(color);
+    return [r, g, b, Math.round(0.78 * 255)];
+  });
+  let points = { count: 0, xs: new Float64Array(0), ys: new Float64Array(0), order: new Uint8Array(0), rows: [], indexOfRow: new Int32Array(0) };
+  let raster = null; // pixel grid from the last frame, for hover and click
+  const rasterCanvas = document.createElement("canvas");
 
   function rebuildPointData(nextData) {
-    const groupedPoints = colorDomain
-      ? colorDomain.map((label) => ({
-          color: fill(label),
-          rows: nextData.filter((d) => d.Label === label)
-        }))
-      : [{ color: "steelblue", rows: nextData }];
-
-    const nextPointData = [];
-    for (const group of groupedPoints) {
-      for (const row of group.rows) {
-        nextPointData.push({
-          id: row.__rowId != null ? `point-${row.__rowId}` : `point-${nextPointData.length}`,
-          color: group.color,
-          label: row.Label ?? "",
-          x: row[xKey],
-          y: row[yKey],
-          title: `${row.Label ?? ""}\n${xKey}: ${row[xKey]}\n${yKey}: ${row[yKey]}`
-        });
-      }
+    const rows = colorDomain ? nextData.filter((row) => labelRanks.has(row.Label)) : nextData;
+    const count = rows.length;
+    const xs = new Float64Array(count);
+    const ys = new Float64Array(count);
+    const order = new Uint8Array(count);
+    let maxRowId = -1;
+    for (let i = 0; i < count; i++) {
+      const row = rows[i];
+      xs[i] = row[xKey] ?? NaN;
+      ys[i] = row[yKey] ?? NaN;
+      order[i] = labelRanks.get(row.Label) ?? 0;
+      maxRowId = Math.max(maxRowId, row.__rowId ?? i);
     }
-    pointData = nextPointData;
+    const indexOfRow = new Int32Array(maxRowId + 1).fill(-1);
+    for (let i = 0; i < count; i++) {
+      indexOfRow[rows[i].__rowId ?? i] = i;
+    }
+    points = { count, xs, ys, order, rows, indexOfRow };
+    raster = null;
+  }
+
+  function pointIdOf(index) {
+    return `point-${points.rows[index].__rowId ?? index}`;
+  }
+
+  function indexOfPointId(pointId) {
+    const rowId = Number(/^point-(\d+)$/.exec(pointId ?? "")?.[1]);
+    return Number.isInteger(rowId) && rowId < points.indexOfRow.length ? points.indexOfRow[rowId] : -1;
+  }
+
+  // The point as the tooltips and overlays use it, at its position on screen.
+  function describePoint(index, xScale, yScale) {
+    const row = points.rows[index];
+    const x = points.xs[index];
+    const y = points.ys[index];
+    return {
+      id: pointIdOf(index),
+      color: labelColors[points.order[index]],
+      label: row.Label ?? "",
+      x,
+      y,
+      cx: xScale(x),
+      cy: yScale(y),
+      title: `${row.Label ?? ""}\n${xKey}: ${row[xKey]}\n${yKey}: ${row[yKey]}`
+    };
+  }
+
+  // A pinned or highlighted point, if it is in view (the same bounds the old drawing used).
+  function renderedPoint(pointId, xScale, yScale) {
+    const index = indexOfPointId(pointId);
+    if (index < 0) {
+      return null;
+    }
+    const point = describePoint(index, xScale, yScale);
+    const inView = point.cx >= plotLeft - 4 && point.cx <= plotRight + 4
+      && point.cy >= plotTop - 4 && point.cy <= plotBottom + 4;
+    return inView ? point : null;
   }
 
   let currentXDomain = [...xDomain];
   let currentYDomain = [...yDomain];
   let currentTransform = d3.zoomIdentity;
-  let currentQuadtree = null;
-  let currentRenderedPointsById = new Map();
   let renderQueued = false;
   let pinnedTooltipNodes = new Map();
   let altHeld = false;
@@ -243,56 +288,32 @@ export function zoomablePlot({
   }
 
   function drawPoints(context, xScale, yScale) {
-    const renderedPoints = [];
-    currentRenderedPointsById = new Map();
-    const highlightedPointIds = controller?.getHighlightedPointIds?.() ?? new Set();
-    const highlightedPoints = [];
+    // Every point goes through one pixel grid over the plot area, in device pixels.
+    const ratio = canvas.width / width;
+    const gridWidth = Math.max(1, Math.round(plotWidth * ratio));
+    const gridHeight = Math.max(1, Math.round(plotHeight * ratio));
+    const [x0, x1] = xScale.domain();
+    const [y0, y1] = yScale.domain();
+    const { top, pick } = binPoints(points.xs, points.ys, points.order, points.count, {
+      x0, x1, y0, y1, width: gridWidth, height: gridHeight
+    });
+    // The old marker: a 5.5 px square from 1.5 px left of / above the point
+    const before = Math.round(1.5 * ratio);
+    const after = Math.round(5.5 * ratio) - before - 1;
+    const pixels = colorize(growMarkers(top, gridWidth, gridHeight, before, after), labelRgba);
+    rasterCanvas.width = gridWidth;
+    rasterCanvas.height = gridHeight;
+    rasterCanvas.getContext("2d").putImageData(new ImageData(pixels, gridWidth, gridHeight), 0, 0);
+    context.save();
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.drawImage(rasterCanvas, Math.round(plotLeft * ratio), Math.round(plotTop * ratio));
+    context.restore();
+    raster = { pick, width: gridWidth, height: gridHeight, ratio };
+
     context.save();
     context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
-    context.globalAlpha = 0.78;
-    let batchColor = null;
-    let batchPath = null;
-
-    function flushBatch() {
-      if (!batchPath) {
-        return;
-      }
-      context.fillStyle = batchColor;
-      context.fill(batchPath);
-      batchColor = null;
-      batchPath = null;
-    }
-
-    for (const point of pointData) {
-      const cx = xScale(point.x);
-      const cy = yScale(point.y);
-
-      if (cx < plotLeft - 4 || cx > plotRight + 4 || cy < plotTop - 4 || cy > plotBottom + 4) {
-        continue;
-      }
-
-      const renderedPoint = { ...point, cx, cy };
-      currentRenderedPointsById.set(point.id, renderedPoint);
-
-      if (highlightedPointIds.has(point.id)) {
-        flushBatch();
-        highlightedPoints.push(renderedPoint);
-        continue;
-      }
-
-      if (point.color !== batchColor) {
-        flushBatch();
-        batchColor = point.color;
-        batchPath = new Path2D();
-      }
-      batchPath.rect(cx - 1.5, cy - 1.5, 5.5, 5.5);
-      renderedPoints.push(renderedPoint);
-    }
-    flushBatch();
-
-    const pinnedIds = getPinnedIds();
-    for (const pinnedPointId of pinnedIds) {
-      const pinnedPoint = currentRenderedPointsById.get(pinnedPointId);
+    for (const pinnedPointId of getPinnedIds()) {
+      const pinnedPoint = renderedPoint(pinnedPointId, xScale, yScale);
       if (!pinnedPoint) {
         continue;
       }
@@ -304,7 +325,11 @@ export function zoomablePlot({
       context.restore();
     }
 
-    for (const highlightedPoint of highlightedPoints) {
+    for (const highlightedPointId of controller?.getHighlightedPointIds?.() ?? []) {
+      const highlightedPoint = renderedPoint(highlightedPointId, xScale, yScale);
+      if (!highlightedPoint) {
+        continue;
+      }
       context.save();
       context.globalAlpha = 1;
       context.fillStyle = highlightedPoint.color;
@@ -315,15 +340,28 @@ export function zoomablePlot({
       context.lineWidth = 1.5;
       context.strokeRect(highlightedPoint.cx - 3, highlightedPoint.cy - 3, 8, 8);
       context.restore();
-      renderedPoints.push(highlightedPoint);
     }
 
     context.restore();
+  }
 
-    currentQuadtree = d3.quadtree()
-      .x((d) => d.cx)
-      .y((d) => d.cy)
-      .addAll(renderedPoints);
+  // Nearest point within 6 px of the pointer, among the points visible in the last frame.
+  function findPointAt(mouseX, mouseY) {
+    if (!raster) {
+      return null;
+    }
+    const { xScale, yScale } = getScales();
+    const distance = (i) => (xScale(points.xs[i]) - mouseX) ** 2 + (yScale(points.ys[i]) - mouseY) ** 2;
+    const index = nearestPoint(
+      raster.pick,
+      raster.width,
+      raster.height,
+      (mouseX - plotLeft) * raster.ratio,
+      (mouseY - plotTop) * raster.ratio,
+      Math.ceil(6 * raster.ratio),
+      distance
+    );
+    return index >= 0 && distance(index) <= 36 ? describePoint(index, xScale, yScale) : null;
   }
 
   function hideTooltip(node) {
@@ -431,7 +469,7 @@ export function zoomablePlot({
     const placedNodes = [hoverTooltip];
 
     for (const pinnedPointId of getPinnedIds()) {
-      const pinnedPoint = currentRenderedPointsById.get(pinnedPointId);
+      const pinnedPoint = renderedPoint(pinnedPointId, xScale, yScale);
       if (!pinnedPoint) {
         continue;
       }
@@ -476,20 +514,8 @@ export function zoomablePlot({
       return;
     }
 
-    if (!currentQuadtree) {
-      hideTooltip(hoverTooltip);
-      return;
-    }
-
-    const hoveredPoint = currentQuadtree.find(mouseX, mouseY, 6);
+    const hoveredPoint = findPointAt(mouseX, mouseY);
     if (!hoveredPoint) {
-      hideTooltip(hoverTooltip);
-      return;
-    }
-
-    const dx = hoveredPoint.cx - mouseX;
-    const dy = hoveredPoint.cy - mouseY;
-    if ((dx * dx) + (dy * dy) > 36) {
       hideTooltip(hoverTooltip);
       return;
     }
@@ -504,18 +530,7 @@ export function zoomablePlot({
 
   function getPointAtPointer(event) {
     const [mouseX, mouseY] = d3.pointer(event, canvas);
-    const hoveredPoint = currentQuadtree?.find(mouseX, mouseY, 6) ?? null;
-    if (!hoveredPoint) {
-      return { hoveredPoint: null, mouseX, mouseY };
-    }
-
-    const dx = hoveredPoint.cx - mouseX;
-    const dy = hoveredPoint.cy - mouseY;
-    if ((dx * dx) + (dy * dy) > 36) {
-      return { hoveredPoint: null, mouseX, mouseY };
-    }
-
-    return { hoveredPoint, mouseX, mouseY };
+    return { hoveredPoint: findPointAt(mouseX, mouseY), mouseX, mouseY };
   }
 
   function zoomToTransform(nextTransform) {
@@ -586,10 +601,13 @@ export function zoomablePlot({
   }
 
   function getPointsInRect(rect) {
+    const { xScale, yScale } = getScales();
     const ids = [];
-    for (const point of currentRenderedPointsById.values()) {
-      if (point.cx >= rect.left && point.cx <= rect.right && point.cy >= rect.top && point.cy <= rect.bottom) {
-        ids.push(point.id);
+    for (let i = 0; i < points.count; i++) {
+      const cx = xScale(points.xs[i]);
+      const cy = yScale(points.ys[i]);
+      if (cx >= rect.left && cx <= rect.right && cy >= rect.top && cy <= rect.bottom) {
+        ids.push(pointIdOf(i));
       }
     }
     return ids;

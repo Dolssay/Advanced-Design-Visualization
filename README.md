@@ -17,7 +17,7 @@ frontend/            Vite multi-page app (vanilla ES modules + D3)
   demo1/             GTB777 WebViz           -> /demo1/
   demo2/             eVTOL sizing UI         -> /demo2/
   shared/api/        endpoints.js (every backend URL) + client.js
-  public/data/       GTB777.csv
+  public/data/       GTB777.bin
   nginx/             production nginx config (serves dist/, proxies /api)
 backend/             FastAPI app wrapping evtolpy
   app/api/paths.py   every backend URL, in one file

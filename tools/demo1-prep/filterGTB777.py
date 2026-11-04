@@ -1,6 +1,8 @@
 import argparse
+import json
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 from cert_requirements import load_requirements, native_values, passes
@@ -35,6 +37,36 @@ FLAG_FOR_COLUMN = {
 }
 
 
+# Columns the web page reads (frontend/demo1/scripts/filteredGTB777.js), before Label.
+# Kept as Float64: the page prints values as is and tests certification values against limits.
+WEB_COLUMNS = SELECT_COLUMNS[:11]
+
+
+def write_columns(path, frame, cert_columns):
+    """One file the browser maps straight onto typed arrays, no parsing:
+    uint32 header length, JSON header, then each column as little-endian bytes.
+    Offsets in the header count from the first 8-byte boundary after the header."""
+    labels = list(dict.fromkeys(frame["Label"]))  # first-seen order, as the CSV gave the page
+    arrays = {name: frame[name].to_numpy("<f8") for name in WEB_COLUMNS}
+    arrays["Label"] = pd.Categorical(frame["Label"], categories=labels).codes.astype("<u1")
+    arrays.update({name: frame[name].to_numpy("<f8") for name in cert_columns})
+
+    columns, offset = [], 0
+    for name, array in arrays.items():
+        columns.append({"name": name, "dtype": array.dtype.str[1:], "offset": offset})
+        offset += -(-array.nbytes // 8) * 8
+    header = json.dumps({"rows": len(frame), "labels": labels, "columns": columns}).encode()
+    start = 4 + len(header)
+
+    with open(path, "wb") as f:
+        f.write(np.uint32(len(header)).astype("<u4").tobytes())
+        f.write(header)
+        f.write(bytes(-start % 8))
+        for array in arrays.values():
+            f.write(array.tobytes())
+            f.write(bytes(-array.nbytes % 8))
+
+
 LABEL_MAP = {
     1: "Level 2-2",
     2: "Level 2-1",
@@ -64,15 +96,17 @@ def main():
     )
     parser.add_argument(
         "--output",
-        default="data/GTB777.csv",
-        help="Path to save the filtered GTB777.csv file.",
+        default="data/GTB777.bin",
+        help="Path to save the column file the web page loads.",
     )
     args = parser.parse_args()
 
     input_path = Path(args.input)
     output_path = Path(args.output)
 
-    df = pd.read_csv(input_path, low_memory=False)
+    requirements = load_requirements()
+    wanted = set(SELECT_COLUMNS) | {r["source"] for r in requirements}
+    df = pd.read_csv(input_path, low_memory=False, usecols=lambda c: c in wanted)
     missing = [col for col in SELECT_COLUMNS if col not in df.columns]
     if missing:
         raise KeyError(f"Missing expected columns in input CSV: {missing}")
@@ -81,7 +115,6 @@ def main():
     working["Label"] = working.apply(compute_label, axis=1)
 
     # Certification values in their own units, for the Demo 1 certification plots
-    requirements = load_requirements()
     cert = native_values(df, requirements)
     ok = passes(cert, requirements)
     for column, flag in FLAG_FOR_COLUMN.items():
@@ -93,8 +126,8 @@ def main():
     working = pd.concat([working, cert], axis=1)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    working.to_csv(output_path, index=False)
-    print(f"Saved filtered GTB777 data to: {output_path}")
+    write_columns(output_path, working, list(cert.columns))
+    print(f"Saved {len(working)} GTB777 designs to: {output_path}")
 
 
 if __name__ == "__main__":

@@ -212,10 +212,14 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
   function setEnsembleData(newData) {
     data = newData;
     downloadBtn.disabled = !data?.rows?.length;
-    parallelCoords.setRows(data.rows);
-    selectedIds = new Set(data.rows.map((r) => r.run ?? r.__rowId));
+    // A new ensemble starts unfiltered in both views; before, the parallel plot kept the
+    // previous ensemble's brushes as hidden filters while the summary said all selected.
     filters = {};
-    updateSampleMoreBtn();
+    suppressParallelCoordsBrush = true;
+    parallelCoords.setRows(data.rows);
+    parallelCoords.setFilters({});
+    suppressParallelCoordsBrush = false;
+    buildScatter();
     updateSelection();
   }
 
@@ -302,12 +306,15 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
 
       // Pulse newly added batch for 2 seconds
       pulsingBatch = res.batch;
+      suppressParallelCoordsBrush = true;
       parallelCoords.setRows(data.rows);
+      suppressParallelCoordsBrush = false;
+      buildScatter();
       updateSelection();
 
       setTimeout(() => {
         pulsingBatch = null;
-        drawScatter();
+        styleScatter();
       }, 2000);
     } catch (error) {
       message.replaceChildren(
@@ -324,7 +331,8 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
     filters = { ...newFilters };
     selectedIds = newSelectedIds;
     updateSampleMoreBtn();
-    drawScatter();
+    styleScatter();
+    syncScatterBrush();
     updateSummary();
   }
 
@@ -353,7 +361,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       }
     }
     updateSampleMoreBtn();
-    drawScatter();
+    styleScatter();
     updateSummary();
   }
 
@@ -399,18 +407,33 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
   }
 
   function highlightInScatter(id) {
-    scatterContainer.querySelectorAll(".dot-scatter").forEach((dot) => {
-      const dotId = Number(dot.getAttribute("data-id"));
-      const isTarget = dotId === id;
-      dot.classList.toggle("is-hover", isTarget);
-      if (isTarget) {
-        dot.parentNode?.appendChild(dot); // Bring to front
-      }
-    });
+    if (!scatter) return;
+    scatter.nodeById.get(scatterHoverId)?.classList.remove("is-hover");
+    scatterHoverId = id;
+    const node = scatter.nodeById.get(id);
+    if (node) {
+      node.classList.add("is-hover");
+      node.parentNode.appendChild(node); // Bring to front
+    }
   }
 
-  // --- Scatter Plot Drawing ---
+  // --- Scatter Plot ---
+  // Built once per data change or resize (axes, legend, one circle per design, brush).
+  // A selection change only restyles the circles in styleScatter(), the way Demo 1 keeps
+  // its plots and repaints only what changed. Rebuilding the whole SVG on every brush move
+  // cost most of each frame and replaced the scatter brush while it was being dragged.
+  let scatter = null;
+  let scatterHoverId = null;
+  const ID = (r) => r.run ?? r.__rowId;
+  const isConverged = (r) => r.status === "converged" || r.status === "Success";
+
   function drawScatter() {
+    buildScatter();
+    styleScatter();
+  }
+
+  function buildScatter() {
+    scatter = null;
     if (!data?.rows?.length) return;
 
     // Filter points with valid MTOW and Total Energy
@@ -422,24 +445,7 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
         Number.isFinite(r.total_energy_kw_hr)
     );
 
-    const brushedSubset = data.rows.filter((r) => selectedIds.has(r.run ?? r.__rowId));
-
-    // Compute Pareto Front on brushed subset
-    const objectives = includeLdObjective
-      ? [
-          { key: "mtow_kg", sense: "min" },
-          { key: "total_energy_kw_hr", sense: "min" },
-          { key: "cruise_l_p_d", sense: "max" },
-        ]
-      : [
-          { key: "mtow_kg", sense: "min" },
-          { key: "total_energy_kw_hr", sense: "min" },
-        ];
-
-    currentFront = paretoFront(brushedSubset, objectives);
-    const frontIdSet = new Set(currentFront.map((r) => r.run ?? r.__rowId));
-
-    const { svg, inner, width: frameW, height: frameH } = chartFrame(scatterContainer, 420);
+    const { svg, inner } = chartFrame(scatterContainer, 420);
     svg.attr("aria-label", "Pareto Scatter: MTOW versus Total Mission Energy");
 
     const tip = createTooltip(scatterContainer);
@@ -528,100 +534,53 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       .attr("font-size", "10px")
       .text(fmt(ldExtent[1] ?? 13.0));
 
-    // 2D Pareto Front Step Line (only for 2-objective optimization)
-    if (!includeLdObjective && currentFront.length > 1) {
-      const sortedFront = currentFront.slice().sort((a, b) => a.mtow_kg - b.mtow_kg);
-      const stepLine = d3
-        .line()
-        .x((d) => x(d.mtow_kg))
-        .y((d) => y(d.total_energy_kw_hr))
-        .curve(d3.curveStepAfter);
+    // 2D Pareto Front Step Line (only for 2-objective optimization); its path is set in styleScatter
+    const frontPath = g
+      .append("path")
+      .attr("fill", "none")
+      .attr("stroke", "#0072b2")
+      .attr("stroke-width", 2.5)
+      .attr("stroke-linejoin", "round")
+      .attr("stroke-linecap", "round")
+      .attr("opacity", 0.9);
+    const stepLine = d3
+      .line()
+      .x((d) => x(d.mtow_kg))
+      .y((d) => y(d.total_energy_kw_hr))
+      .curve(d3.curveStepAfter);
 
-      g.append("path")
-        .datum(sortedFront)
-        .attr("fill", "none")
-        .attr("stroke", "#0072b2")
-        .attr("stroke-width", 2.5)
-        .attr("stroke-linejoin", "round")
-        .attr("stroke-linecap", "round")
-        .attr("opacity", 0.9)
-        .attr("d", stepLine);
-    }
-
-    // Points Group
-    const pointsG = g.append("g").attr("class", "scatter-points");
-
-    // Sort valid points so Pareto front and brushed points draw on top
-    const sortedPoints = validRows.slice().sort((a, b) => {
-      const aId = a.run ?? a.__rowId;
-      const bId = b.run ?? b.__rowId;
-      const aFront = frontIdSet.has(aId) ? 2 : selectedIds.has(aId) ? 1 : 0;
-      const bFront = frontIdSet.has(bId) ? 2 : selectedIds.has(bId) ? 1 : 0;
-      return aFront - bFront;
-    });
-
-    pointsG
+    // Points Group. Failed designs (max_iter, diverged) are grey, as in the parallel plot:
+    // their MTOW and energy come from an unconverged iteration.
+    const circles = g
+      .append("g")
+      .attr("class", "scatter-points")
       .selectAll("circle")
-      .data(sortedPoints)
+      .data(validRows)
       .join("circle")
-      .attr("class", (r) => {
-        const id = r.run ?? r.__rowId;
-        const isHover = id === hoveredId;
-        return `dot-scatter ${isHover ? "is-hover" : ""}`;
-      })
-      .attr("data-id", (r) => r.run ?? r.__rowId)
+      .attr("class", "dot-scatter")
+      .attr("data-id", ID)
       .attr("cx", (r) => x(r.mtow_kg))
       .attr("cy", (r) => y(r.total_energy_kw_hr))
-      .attr("r", (r) => {
-        const id = r.run ?? r.__rowId;
-        const isFront = frontIdSet.has(id);
-        const isPulsing = pulsingBatch != null && r.batch === pulsingBatch;
-        if (isPulsing) return 8;
-        if (isFront) return 6.5;
-        return 4.5;
-      })
       .attr("fill", (r) =>
-        typeof r.cruise_l_p_d === "number" && Number.isFinite(r.cruise_l_p_d)
+        isConverged(r) && typeof r.cruise_l_p_d === "number" && Number.isFinite(r.cruise_l_p_d)
           ? colorScale(r.cruise_l_p_d)
-          : "#64748b"
+          : "#94a3b8"
       )
-      .attr("fill-opacity", (r) => {
-        const id = r.run ?? r.__rowId;
-        const isBrushed = selectedIds.has(id);
-        const isFront = frontIdSet.has(id);
-        if (!isBrushed) return 0.08;
-        if (isFront) return 1.0;
-        return 0.55;
-      })
-      .attr("stroke", (r) => {
-        const id = r.run ?? r.__rowId;
-        const isFront = frontIdSet.has(id);
-        const isPulsing = pulsingBatch != null && r.batch === pulsingBatch;
-        if (isPulsing) return "#f59e0b";
-        if (isFront) return "#ffffff";
-        return "transparent";
-      })
-      .attr("stroke-width", (r) => {
-        const id = r.run ?? r.__rowId;
-        const isFront = frontIdSet.has(id);
-        const isPulsing = pulsingBatch != null && r.batch === pulsingBatch;
-        if (isPulsing || isFront) return 2;
-        return 0.5;
-      })
       .on("pointerenter", function (event, r) {
-        const id = r.run ?? r.__rowId;
+        const id = ID(r);
         hoveredId = id;
         parallelCoords.highlight(id);
-        d3.select(this).classed("is-hover", true);
+        highlightInScatter(id);
         const [cx, cy] = d3.pointer(event, scatterContainer);
-        const isFront = frontIdSet.has(id);
+        const isFront = currentFront.includes(r);
         const lines = specs.map(
           (s) => `${s.label}: ${fmtValue(r[s.key], s)} ${s.unit === "count" ? "" : s.unit}`
         );
         tip.show(
-          `<strong>Run ${r.run ?? r.__rowId}</strong> · MTOW ${fmt(r.mtow_kg)} kg · ${fmt(
+          `<strong>Run ${id}</strong> · MTOW ${fmt(r.mtow_kg)} kg · ${fmt(
             r.total_energy_kw_hr
           )} kWh · L/D ${fmt(r.cruise_l_p_d)}` +
+            (isConverged(r) ? "" : ` · ${r.status}`) +
             (isFront ? ` <span class="badge" style="color: #38bdf8;">[Pareto Front]</span>` : "") +
             `<br><span class="tip-small">${lines.join("<br>")}</span><br>` +
             `<span class="tip-hint">Click to load this design</span>`,
@@ -632,10 +591,15 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       .on("pointerleave", function () {
         hoveredId = null;
         parallelCoords.highlight(null);
-        d3.select(this).classed("is-hover", false);
+        highlightInScatter(null);
         tip.hide();
       })
       .on("click", (event, r) => handleClick(r));
+
+    const nodeById = new Map();
+    circles.each(function (r) {
+      nodeById.set(ID(r), this);
+    });
 
     // 2-D d3.brush on Scatter Plot
     const scatterBrush = d3
@@ -649,21 +613,13 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
         const selection = event.selection;
         if (selection) {
           const [[x0, y0], [x1, y1]] = selection;
-          const mtow0 = x.invert(x0);
-          const mtow1 = x.invert(x1);
-          const e0 = y.invert(y1);
-          const e1 = y.invert(y0);
-          filters.mtow_kg = [Math.min(mtow0, mtow1), Math.max(mtow0, mtow1)];
-          filters.total_energy_kw_hr = [Math.min(e0, e1), Math.max(e0, e1)];
+          filters.mtow_kg = [Math.min(x.invert(x0), x.invert(x1)), Math.max(x.invert(x0), x.invert(x1))];
+          filters.total_energy_kw_hr = [Math.min(y.invert(y0), y.invert(y1)), Math.max(y.invert(y0), y.invert(y1))];
         } else {
           delete filters.mtow_kg;
           delete filters.total_energy_kw_hr;
         }
-
-        suppressParallelCoordsBrush = true;
-        parallelCoords.setFilters(filters);
-        suppressParallelCoordsBrush = false;
-        updateSelection();
+        queueSelection();
       });
 
     const brushG = g.append("g").attr("class", "scatter-brush").call(scatterBrush);
@@ -673,9 +629,30 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
       brushG.call(scatterBrush.move, null);
     });
 
-    // If MTOW and Total Energy are currently brushed, reflect in scatter brush
+    scatter = { x, y, circles, nodeById, frontPath, stepLine, brushG, scatterBrush };
+    syncScatterBrush();
+  }
+
+  // Scatter brush moves arrive several times per frame; apply them once per frame.
+  let selectionQueued = false;
+  function queueSelection() {
+    if (selectionQueued) return;
+    selectionQueued = true;
+    requestAnimationFrame(() => {
+      selectionQueued = false;
+      suppressParallelCoordsBrush = true;
+      parallelCoords.setFilters(filters);
+      suppressParallelCoordsBrush = false;
+      updateSelection();
+    });
+  }
+
+  // Mirror an MTOW + energy filter set on the parallel axes in the scatter brush.
+  function syncScatterBrush() {
+    if (!scatter) return;
+    const { x, y, brushG, scatterBrush } = scatter;
+    suppressScatterBrush = true;
     if (filters.mtow_kg && filters.total_energy_kw_hr) {
-      suppressScatterBrush = true;
       const bx0 = x(filters.mtow_kg[0]);
       const bx1 = x(filters.mtow_kg[1]);
       const by0 = y(filters.total_energy_kw_hr[1]);
@@ -684,8 +661,47 @@ export function createEnsembleView(root, catalogue, { getBaseline, onPickDesign 
         [Math.min(bx0, bx1), Math.min(by0, by1)],
         [Math.max(bx0, bx1), Math.max(by0, by1)],
       ]);
-      suppressScatterBrush = false;
+    } else if (d3.brushSelection(brushG.node())) {
+      brushG.call(scatterBrush.move, null);
     }
+    suppressScatterBrush = false;
+  }
+
+  // Selection-dependent styling only: Pareto front, opacity, size, outline.
+  function styleScatter() {
+    if (!scatter || !data?.rows?.length) return;
+
+    const brushedSubset = data.rows.filter((r) => selectedIds.has(ID(r)));
+    const objectives = includeLdObjective
+      ? [
+          { key: "mtow_kg", sense: "min" },
+          { key: "total_energy_kw_hr", sense: "min" },
+          { key: "cruise_l_p_d", sense: "max" },
+        ]
+      : [
+          { key: "mtow_kg", sense: "min" },
+          { key: "total_energy_kw_hr", sense: "min" },
+        ];
+
+    currentFront = paretoFront(brushedSubset, objectives);
+    const frontIdSet = new Set(currentFront.map(ID));
+
+    scatter.frontPath.attr(
+      "d",
+      !includeLdObjective && currentFront.length > 1
+        ? scatter.stepLine(currentFront.slice().sort((a, b) => a.mtow_kg - b.mtow_kg))
+        : null
+    );
+
+    const isPulsing = (r) => pulsingBatch != null && r.batch === pulsingBatch;
+    scatter.circles
+      .attr("r", (r) => (isPulsing(r) ? 8 : frontIdSet.has(ID(r)) ? 6.5 : 4.5))
+      .attr("fill-opacity", (r) => (!selectedIds.has(ID(r)) ? 0.08 : frontIdSet.has(ID(r)) ? 1.0 : 0.55))
+      .attr("stroke", (r) => (isPulsing(r) ? "#f59e0b" : frontIdSet.has(ID(r)) ? "#ffffff" : "transparent"))
+      .attr("stroke-width", (r) => (isPulsing(r) || frontIdSet.has(ID(r)) ? 2 : 0.5));
+
+    // Front (and pulsing) points on top; only these few nodes move in the DOM.
+    scatter.circles.filter((r) => frontIdSet.has(ID(r)) || isPulsing(r)).raise();
   }
 
   // --- CSV Download ---

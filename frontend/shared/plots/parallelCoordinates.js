@@ -183,14 +183,24 @@ export function createParallelCoordinates(data = [], config = {}) {
   if (!isDemo1Mode) {
     // Demo 2 overlays an absolute SVG on a fixed-height frame. In Demo 1 the
     // in-flow SVG sets the frame height, so the stretched canvas matches the axes.
-    frame.style.height = `${height}px`;
+    // The frame keeps the plot's aspect ratio so the stretched canvas and the viewBox SVG
+    // scale identically; a fixed height let the SVG shrink while the canvas did not, and
+    // lines (and hover hits) drifted off their axes on screens narrower than `width`.
+    frame.style.aspectRatio = `${width} / ${height}`;
+    frame.style.minWidth = "900px";
     frame.style.overflow = "hidden";
+    root.style.overflowX = "auto";
   }
 
   const canvas = document.createElement("canvas");
   canvas.className = "parallel-canvas";
-  canvas.width = width;
-  canvas.height = height;
+  // shortcut: devicePixelRatio is read once; moving to another monitor keeps the old sharpness until reload.
+  const pixelRatio = isDemo1Mode ? 1 : window.devicePixelRatio || 1;
+  canvas.width = width * pixelRatio;
+  canvas.height = height * pixelRatio;
+  if (!isDemo1Mode) {
+    Object.assign(canvas.style, { position: "absolute", inset: "0", width: "100%", height: "100%" });
+  }
   canvas.setAttribute("aria-hidden", "true");
 
   const svg = d3
@@ -219,6 +229,16 @@ export function createParallelCoordinates(data = [], config = {}) {
   root.append(header, frame);
 
   const context = canvas.getContext("2d");
+  context.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+
+  // Demo 2: every line except the hovered one is painted once into this cache, so a hover
+  // only copies it back and draws one line (Demo 1's background-cache trick).
+  const demo2Base = isDemo1Mode ? null : document.createElement("canvas");
+  let demo2BaseDirty = true;
+  if (demo2Base) {
+    demo2Base.width = canvas.width;
+    demo2Base.height = canvas.height;
+  }
 
   // Determine x positions with optional visual gap
   const xPositions = new Map();
@@ -695,6 +715,37 @@ export function createParallelCoordinates(data = [], config = {}) {
   }
 
   function renderDemo2Canvas() {
+    if (demo2BaseDirty) {
+      const baseContext = demo2Base.getContext("2d");
+      baseContext.setTransform(pixelRatio, 0, 0, pixelRatio, 0, 0);
+      paintDemo2Base(baseContext);
+      demo2BaseDirty = false;
+    }
+    context.clearRect(0, 0, width, height);
+    context.drawImage(demo2Base, 0, 0, width, height);
+
+    const highlightedRow = hoveredId == null ? null : currentRows.find((r) => (r.run ?? r.__rowId) === hoveredId);
+    if (highlightedRow) {
+      const points = getRowPoints(highlightedRow);
+      context.save();
+      context.globalAlpha = 1;
+      context.lineWidth = 4;
+      context.strokeStyle = "#ffffff";
+      context.beginPath();
+      points.forEach(([px, py], idx) => {
+        if (idx === 0) context.moveTo(px, py);
+        else context.lineTo(px, py);
+      });
+      context.stroke();
+
+      context.lineWidth = 2.5;
+      context.strokeStyle = getRowColor(highlightedRow);
+      context.stroke();
+      context.restore();
+    }
+  }
+
+  function paintDemo2Base(context) {
     context.clearRect(0, 0, width, height);
 
     // Draw no-value guideline under output axes
@@ -715,13 +766,9 @@ export function createParallelCoordinates(data = [], config = {}) {
 
     const unselected = [];
     const selected = [];
-    let highlightedRow = null;
 
     for (const r of currentRows) {
       const id = r.run ?? r.__rowId;
-      if (id === hoveredId) {
-        highlightedRow = r;
-      }
       if (selectedIdSet.has(id)) {
         selected.push(r);
       } else {
@@ -752,7 +799,6 @@ export function createParallelCoordinates(data = [], config = {}) {
 
     const baseAlpha = selected.length > 500 ? 0.28 : selected.length > 100 ? 0.45 : 0.75;
     for (const row of selected) {
-      if (row === highlightedRow) continue;
       const points = getRowPoints(row);
       const isFailed = row.status && row.status !== "converged" && row.status !== "Success";
       context.globalAlpha = isFailed ? Math.min(0.22, baseAlpha) : baseAlpha;
@@ -765,26 +811,7 @@ export function createParallelCoordinates(data = [], config = {}) {
       });
       context.stroke();
     }
-
-    // 3. Highlighted line
-    if (highlightedRow) {
-      const points = getRowPoints(highlightedRow);
-      context.save();
-      context.globalAlpha = 1;
-      context.lineWidth = 4;
-      context.strokeStyle = "#ffffff";
-      context.beginPath();
-      points.forEach(([px, py], idx) => {
-        if (idx === 0) context.moveTo(px, py);
-        else context.lineTo(px, py);
-      });
-      context.stroke();
-
-      context.lineWidth = 2.5;
-      context.strokeStyle = getRowColor(highlightedRow);
-      context.stroke();
-      context.restore();
-    }
+    context.globalAlpha = 1;
   }
 
     // --- SVG Axes & Brushes ---
@@ -953,10 +980,22 @@ export function createParallelCoordinates(data = [], config = {}) {
       }
     }
 
+    demo2BaseDirty = true;
     render();
     if (!suppressBrushEvent) {
       onFilter?.(activeFilters, selectedIdSet);
     }
+  }
+
+  // A fast mouse sends several brush events per frame; filter and repaint once per frame.
+  let recomputeQueued = false;
+  function queueRecompute() {
+    if (recomputeQueued) return;
+    recomputeQueued = true;
+    window.requestAnimationFrame(() => {
+      recomputeQueued = false;
+      recomputeSelection();
+    });
   }
 
   function onAxisBrush(event, dim) {
@@ -971,7 +1010,7 @@ export function createParallelCoordinates(data = [], config = {}) {
     } else {
       delete activeFilters[dim.key];
     }
-    recomputeSelection();
+    queueRecompute();
   }
 
   function clearAllBrushes() {
@@ -994,6 +1033,7 @@ export function createParallelCoordinates(data = [], config = {}) {
   if (colorBySelect) {
     colorBySelect.addEventListener("change", (e) => {
       currentColorByMode = e.target.value;
+      demo2BaseDirty = true;
       render();
     });
   }
@@ -1019,7 +1059,10 @@ export function createParallelCoordinates(data = [], config = {}) {
     const [mx, my] = getCanvasPoint(event);
     let closestDist = 8;
     let closestRow = null;
-    const candidates = isDemo1Mode ? getVisibleData() : currentRows;
+    // Demo 2: only lines that pass the brushes; a faint filtered-out line is not a pick target.
+    const candidates = isDemo1Mode
+      ? getVisibleData()
+      : currentRows.filter((r) => selectedIdSet.has(r.run ?? r.__rowId));
     // Only segments whose x span reaches within 8 px of the pointer can be closer than 8 px
     const xs = dimensions.map((dim) => finalMargin.left + axisX(dim));
     const near = [];
@@ -1159,7 +1202,8 @@ export function createParallelCoordinates(data = [], config = {}) {
     labelsInRows = null;
     buildScales();
     renderAxes();
-    recomputeSelection();
+    // renderAxes made fresh, empty brushes; redraw the filters still in force on them.
+    root.setFilters(activeFilters);
   };
 
   root.setFilters = function (filters = {}) {

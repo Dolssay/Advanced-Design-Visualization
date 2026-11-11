@@ -533,9 +533,8 @@ export function createHeatmapPlot(data, controller = null, contentController = n
   function renderStatus() {
     const snapshot = latest.snapshot;
     const metric = snapshot.metric;
-    const messages = [
-      `${latest.used.toLocaleString()} designs binned into ${latest.nx} × ${latest.ny} cells in ${latest.elapsedMs.toFixed(1)} ms ${worker ? "on a worker thread" : "on the main thread"}.`
-    ];
+    // The design count is shown once, in the tornado subtitle below.
+    const messages = [];
     if (metric.kind === "share") {
       const missing = metric.labels.filter((label) => !snapshot.selected.has(label));
       if (missing.length === metric.labels.length) {

@@ -95,7 +95,7 @@ export function createGTB777Profiler(data, controller = null, contentController 
     responses: RESPONSES,
     model: fitted,
     title: "GTB777 Prediction Profiler",
-    subtitle: `Fitted response surface over all ${fitted.getSampleCount()} designs. Curves come from the regression, not the sampled points.`
+    subtitle: `Fitted response surface over all designs. Curves come from the regression, not the sampled points.`
   });
 
   if (controller?.subscribe && contentController?.getRowByPointId) {

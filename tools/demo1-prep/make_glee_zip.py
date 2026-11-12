@@ -47,7 +47,7 @@ def main():
     with zipfile.ZipFile(out, "w", zipfile.ZIP_DEFLATED) as z:
         z.writestr(f"{name}/GLEEdata.csv", table.to_csv(index=False))
         # every chart picture of the run (<id>_<chart>.png), not only the default one in "image"
-        for cell in table["Cell"]:
+        for cell in table.iloc[:, 0]:  # run id column: "Cell" (GTB777) or "cell" (eVTOL)
             for picture in sorted(folder.glob(f"{cell.split('_')[1]}_*.png")):
                 z.write(picture, f"{name}/{picture.name}")
     print(f"Wrote {out} ({len(table)} runs)")

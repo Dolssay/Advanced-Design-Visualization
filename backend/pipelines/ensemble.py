@@ -33,7 +33,7 @@ BACKEND_DIR = Path(__file__).resolve().parents[1]
 
 # Plot file suffixes GLEE expects (<run>_<suffix>.png), keyed by the API's image kinds.
 GLEE_IMAGE_NAMES = {
-    "layout": "aircraft_layout",
+    "layout": "aircraftlayout",  # GLEE looks up "Aircraft Layout" as <run>_aircraftlayout.png
     "mass-breakdown": "massbreakdown",
     "power-profile": "powerprofile",
     "energy-profile": "energyprofile",
@@ -81,7 +81,7 @@ def _row(idx: int, sample: dict, result: dict) -> dict:
     row["MTOW (kg)"] = result.get("mtow_kg")
     row["Iterations"] = result.get("iterations")
     row["Status"] = "Success" if result["status"] == "Success" else result["status"]
-    row["image"] = f"{idx}.png"
+    row["image"] = f"{idx}_{GLEE_IMAGE_NAMES['layout']}.png"  # default picture before a chart is picked
     return row
 
 

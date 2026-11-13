@@ -1,20 +1,34 @@
 import { getGTB777SketchColor } from "./sketchGTB777.js";
+import { DIMENSIONS, formatDimensionTitle } from "./gtb777Dimensions.js";
 
 function parsePointId(pointId) {
   const match = /^point-(\d+)$/.exec(pointId ?? "");
   return match ? Number(match[1]) : null;
 }
 
-function formatPointDetails(row) {
+// The short form (outputs only) is the pinned tooltip on small plots; the Content box
+// details list the design's input parameters as well.
+function formatPointDetails(row, withInputs = false) {
   if (!row) {
     return "";
   }
 
+  const lines = (group) => DIMENSIONS
+    .filter((dimension) => dimension.group === group)
+    .map((dimension) => `${formatDimensionTitle(dimension)}: ${row[dimension.key] ?? ""}`);
+
+  if (!withInputs) {
+    return [`Label: ${row.Label ?? ""}`, ...lines("output")].join("\n");
+  }
+
   return [
     `Label: ${row.Label ?? ""}`,
-    `OEW (1000 lbm): ${row["OEW (1000 lbm)"] ?? ""}`,
-    `Block Fuel (1000 lbm): ${row["Block Fuel (1000 lbm)"] ?? ""}`,
-    `Cruise CD (count): ${row["Cruise CD (count)"] ?? ""}`
+    "",
+    "Inputs",
+    ...lines("input"),
+    "",
+    "Outputs",
+    ...lines("output")
   ].join("\n");
 }
 
@@ -102,7 +116,7 @@ export function createContentController(data) {
     },
     getPointDetails(pointId) {
       const row = this.getRowByPointId(pointId);
-      return formatPointDetails(row);
+      return formatPointDetails(row, true);
     },
     getPinnedPointSummaries(plotController) {
       const ids = Array.from(plotController?.getAllPinnedIds?.() ?? []);

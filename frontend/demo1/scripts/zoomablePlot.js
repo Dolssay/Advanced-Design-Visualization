@@ -225,8 +225,13 @@ export function zoomablePlot({
   }
 
   function drawAxes(context, xScale, yScale) {
-    const xTicks = xScale.ticks(5);
-    const yTicks = yScale.ticks(5);
+    // About one tick per 60px, so small cells do not run their labels together.
+    const xCount = Math.max(2, Math.min(5, Math.round(plotWidth / 60)));
+    const yCount = Math.max(2, Math.min(5, Math.round(plotHeight / 50)));
+    const xTicks = xScale.ticks(xCount);
+    const yTicks = yScale.ticks(yCount);
+    const xFormat = xScale.tickFormat(xCount);
+    const yFormat = yScale.tickFormat(yCount);
 
     context.save();
     context.setTransform(canvas.width / width, 0, 0, canvas.height / height, 0, 0);
@@ -258,14 +263,19 @@ export function zoomablePlot({
 
     context.textAlign = "center";
     context.textBaseline = "top";
+    // Labels are kept inside the cell so the edge ticks are never cut by the border.
     for (const tick of xTicks) {
-      context.fillText(String(tick), xScale(tick), plotBottom + 6);
+      const text = xFormat(tick);
+      const half = context.measureText(text).width / 2;
+      const x = Math.min(width - half - 2, Math.max(half + 2, xScale(tick)));
+      context.fillText(text, x, plotBottom + 6);
     }
 
     context.textAlign = "right";
     context.textBaseline = "middle";
     for (const tick of yTicks) {
-      context.fillText(String(tick), plotLeft - 6, yScale(tick));
+      const y = Math.min(height - 8, Math.max(8, yScale(tick)));
+      context.fillText(yFormat(tick), plotLeft - 6, y);
     }
 
     if (xLabel) {
@@ -752,7 +762,10 @@ export function zoomablePlot({
   }
 
   // Browser zoom and moving between monitors change devicePixelRatio and fire resize.
-  window.addEventListener("resize", scheduleRender);
+  // Cells are rebuilt when the matrix layout changes; destroy() drops these page-level listeners.
+  const teardown = new AbortController();
+  const { signal } = teardown;
+  window.addEventListener("resize", scheduleRender, { signal });
   canvas.addEventListener("mousemove", handlePointerMove);
   canvas.addEventListener("mouseleave", () => {
     hideTooltip(hoverTooltip);
@@ -761,7 +774,7 @@ export function zoomablePlot({
   canvas.addEventListener("mouseup", handlePointerUp);
   canvas.addEventListener("click", handleClick);
   canvas.addEventListener("dblclick", handleDoubleClick);
-  window.addEventListener("mouseup", handlePointerUp);
+  window.addEventListener("mouseup", handlePointerUp, { signal });
 
   window.addEventListener("keydown", (event) => {
     if (event.key === "Alt" && !altHeld) {
@@ -772,7 +785,7 @@ export function zoomablePlot({
       hideAllPinnedTooltips();
       setCursor();
     }
-  });
+  }, { signal });
 
   window.addEventListener("keyup", (event) => {
     if (event.key === "Alt") {
@@ -782,7 +795,7 @@ export function zoomablePlot({
       scheduleRender();
       setCursor();
     }
-  });
+  }, { signal });
 
   window.addEventListener("blur", () => {
     if (altHeld) {
@@ -790,7 +803,7 @@ export function zoomablePlot({
       scheduleRender();
       setCursor();
     }
-  });
+  }, { signal });
 
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden" && altHeld) {
@@ -798,7 +811,7 @@ export function zoomablePlot({
       scheduleRender();
       setCursor();
     }
-  });
+  }, { signal });
 
   const zoom = d3.zoom()
     .scaleExtent(scaleExtent)
@@ -831,7 +844,7 @@ export function zoomablePlot({
   plotSelection.on("dblclick.zoom", null);
 
   if (controller?.subscribe) {
-    controller.subscribe((event) => {
+    const unsubscribe = controller.subscribe((event) => {
       if (event.type === "tool" || event.type === "moveSelect") {
         setCursor();
         hideTooltip(hoverTooltip);
@@ -870,12 +883,14 @@ export function zoomablePlot({
         zoomToSelection({ left, right, top, bottom });
       }
     });
+    signal.addEventListener("abort", unsubscribe);
   }
 
   rebuildPointData(data);
   setCursor();
   container.append(canvas, selectionOverlay, pinnedTooltipLayer, hoverTooltip);
   render();
+  container.destroy = () => teardown.abort();
   container.setData = (nextData) => {
     rebuildPointData(nextData);
     hideTooltip(hoverTooltip);

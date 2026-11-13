@@ -8,7 +8,7 @@ This folder contains a static browser viewer for the GTB777 dataset (`GTB777.bin
 - `main.js` - entrypoint that loads the CSV and attaches the plot
 - `scripts/filteredGTB777.js` - dataset loader and data filter
 - `scripts/columnFile.js` - reads the binary column file into typed arrays
-- `scripts/splomGTB777.js` - scatterplot matrix builder
+- `scripts/splomGTB777.js` - scatterplot matrix builder: outputs, or the input variables ticked in its Variables menu as pairs, with draggable axis order
 - `scripts/tools.js` - shared toolbar and plot interaction controller
 - `scripts/zoomablePlot.js` - zoom/pan scatterplot cell renderer
 - `scripts/profiler.js` - config-driven prediction profiler renderer, reusable across demos
